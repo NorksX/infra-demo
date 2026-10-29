@@ -1,0 +1,19 @@
+---
+profile: production
+
+exclude_paths:
+  - roles/galaxy/
+  - .vagrant/
+  - collections/
+  - .ansible/
+  - "**/vault.yml"
+
+skip_list:
+  # The assignment mandates exact role names (wordpress-setup, haproxy-config,
+  # galera-cluster, security-hardening), which contain hyphens.
+  - role-name
+  # Galaxy metadata (author/namespace) is irrelevant for private course roles.
+  - meta-no-info
+
+warn_list:
+  - experimental

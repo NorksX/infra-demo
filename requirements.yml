@@ -1,0 +1,23 @@
+---
+# Install with: ansible-galaxy install -r requirements.yml
+# (deploy.sh does this automatically before running site.yml.)
+
+roles:
+  - name: geerlingguy.mysql
+    version: "6.5.0"
+  - name: geerlingguy.php
+    version: "6.1.0"
+  - name: geerlingguy.nginx
+    version: "3.3.1"
+  - name: geerlingguy.redis
+    version: "2.0.0"
+
+collections:
+  - name: community.general
+    version: ">=10.0.0"
+  - name: community.mysql
+    version: ">=3.10.0"
+  - name: ansible.posix
+    version: ">=1.6.0"
+  - name: community.crypto
+    version: ">=2.22.0"

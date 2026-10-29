@@ -1,0 +1,34 @@
+---
+# Environment-independent defaults (versions, ports). Inventory group_vars
+# under inventories/<env>/ override these when an environment needs to differ.
+# Pinned versions keep runs reproducible and idempotent.
+
+# --- Application versions ----------------------------------------------------
+wordpress_version: "6.7.1"
+woocommerce_version: "9.4.2"
+redis_cache_plugin_version: "2.5.4"
+wp_cli_version: "2.11.0"
+
+# --- PHP ---------------------------------------------------------------------
+php_version: "8.3"
+
+# --- Ports -------------------------------------------------------------------
+http_port: 80
+https_port: 443
+mysql_port: 3306
+redis_port: 6379
+haproxy_stats_port: 8404
+galera_sst_port: 4444
+galera_ist_port: 4568
+galera_replication_port: 4567
+
+# --- Deploy account ----------------------------------------------------------
+deploy_user: deploy
+
+# --- WordPress site basics (non-secret) --------------------------------------
+wp_site_title: "Shop"
+wp_admin_user: admin
+wp_admin_email: "admin@{{ domain }}"
+wp_db_name: wordpress
+wp_db_user: wordpress
+wp_table_prefix: wp_

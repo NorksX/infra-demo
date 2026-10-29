@@ -1,0 +1,6 @@
+---
+# Full platform deployment, from clean Ubuntu VMs to a working shop.
+# Run through deploy.sh, which selects the inventory and vault.
+
+- name: Bootstrap
+  ansible.builtin.import_playbook: playbooks/bootstrap.yml

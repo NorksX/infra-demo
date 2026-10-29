@@ -1,0 +1,30 @@
+# Vault password files — never commit
+.vault_pass
+.vault_pass*
+*.vault_pass
+
+# The deploy private key stays local; only deploy_key.pub is referenced.
+files/deploy_key
+files/deploy_key.pub
+
+# Vagrant runtime state
+.vagrant/
+*.box
+
+# Galaxy roles and collections are installed from requirements.yml, not committed
+roles/galaxy/
+collections/
+.ansible/
+
+# Ansible runtime artifacts
+*.retry
+*.log
+fact_cache/
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db

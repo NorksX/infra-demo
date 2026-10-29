@@ -1,0 +1,30 @@
+---
+# Schema of the encrypted vault.yml next to this file, with FAKE values.
+# The real vault.yml is generated with random secrets by:
+#
+#   scripts/generate-vault.sh staging
+#
+# and can be viewed/edited with:
+#
+#   ansible-vault view vault.yml --vault-id staging@.vault_pass_staging
+#   ansible-vault edit vault.yml --vault-id staging@.vault_pass_staging
+#
+# Each environment has its OWN vault password and DIFFERENT secrets.
+
+vault_mysql_root_password: "CHANGE_ME"
+vault_wp_db_password: "CHANGE_ME"
+vault_galera_sst_password: "CHANGE_ME"
+vault_redis_password: "CHANGE_ME"
+vault_wp_admin_password: "CHANGE_ME"
+vault_haproxy_stats_password: "CHANGE_ME"
+vault_keepalived_auth_password: "CHANGE_ME"   # VRRP uses max 8 characters
+
+vault_wp_salts:
+  AUTH_KEY: "CHANGE_ME"
+  SECURE_AUTH_KEY: "CHANGE_ME"
+  LOGGED_IN_KEY: "CHANGE_ME"
+  NONCE_KEY: "CHANGE_ME"
+  AUTH_SALT: "CHANGE_ME"
+  SECURE_AUTH_SALT: "CHANGE_ME"
+  LOGGED_IN_SALT: "CHANGE_ME"
+  NONCE_SALT: "CHANGE_ME"

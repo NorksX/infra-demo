@@ -1,0 +1,16 @@
+---
+- name: Bootstrap all hosts
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait until the host accepts SSH
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
+    - name: Refresh the apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
