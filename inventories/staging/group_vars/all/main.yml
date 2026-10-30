@@ -1,26 +1,31 @@
 ---
-# Non-secret variables that REFERENCE vault secrets, so variable names stay
-# discoverable without decrypting the vault. The real values live in the
-# encrypted vault.yml next to this file (see vault.example.yml for the schema).
-#
-# Convention: every secret is named vault_<thing> in vault.yml and surfaced here
-# as <thing>: "{{ vault_<thing> }}".
+# Settings for every host in the STAGING environment.
+# (Values common to both environments are in inventories/shared/group_vars.)
+# Secrets live in the encrypted vault.yml next to this file and are surfaced
+# here as plain names (<thing>: "{{ vault_<thing> }}"), so every variable is
+# discoverable without decrypting the vault.
 
-# --- Database ----------------------------------------------------------------
+env_name: staging
+domain: staging.shop.local
+site_url: "https://{{ domain }}"
+
+# --- Network -----------------------------------------------------------------
+private_subnet: 192.168.57.0/24
+# Single load balancer in staging: the "VIP" is simply haproxy1's address.
+lb_vip: 192.168.57.11
+keepalived_enabled: false
+
+# --- Application versions ----------------------------------------------------
+# Staging runs the next release first; production follows via rolling_update.yml.
+wordpress_version: "7.1.4"
+woocommerce_version: "11.2.1"
+
+# --- Secrets (from vault.yml) ------------------------------------------------
 mysql_root_password: "{{ vault_mysql_root_password }}"
 wp_db_password: "{{ vault_wp_db_password }}"
 galera_sst_password: "{{ vault_galera_sst_password }}"
-
-# --- Redis -------------------------------------------------------------------
 redis_password: "{{ vault_redis_password }}"
-
-# --- WordPress ---------------------------------------------------------------
 wp_admin_password: "{{ vault_wp_admin_password }}"
-# WordPress security salts (8 keys) come straight from the vault.
 wp_salts: "{{ vault_wp_salts }}"
-
-# --- HAProxy -----------------------------------------------------------------
 haproxy_stats_password: "{{ vault_haproxy_stats_password }}"
-
-# --- keepalived --------------------------------------------------------------
 keepalived_auth_password: "{{ vault_keepalived_auth_password }}"

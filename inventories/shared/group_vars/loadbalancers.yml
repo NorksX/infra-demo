@@ -1,0 +1,11 @@
+---
+# HAProxy is the only public entry point. It also fronts MariaDB and Redis for
+# the WordPress nodes, so those ports are open to the web tier only.
+firewall_rules:
+  - { port: 80, comment: HTTP }
+  - { port: 443, comment: HTTPS }
+  - { port: "{{ haproxy_stats_port }}", from: "{{ private_subnet }}", comment: HAProxy stats }
+  - { port: "{{ mysql_port }}", from_hosts: "{{ groups['wordpress'] }}", comment: MariaDB via HAProxy }
+  - { port: "{{ redis_port }}", from_hosts: "{{ groups['wordpress'] }}", comment: Redis via HAProxy }
+  # keepalived peers talk VRRP (IP protocol 112), which UFW can't name: allow all from peers.
+  - { from_hosts: "{{ groups['loadbalancers'] | difference([inventory_hostname]) }}", comment: VRRP peer }

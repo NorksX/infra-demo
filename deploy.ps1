@@ -16,5 +16,5 @@ vagrant up
 if ($LASTEXITCODE -ne 0) { throw "vagrant up failed" }
 
 $wslPath = (wsl wslpath -a ($PSScriptRoot -replace '\\', '/')).Trim()
-wsl --cd $wslPath ./deploy.sh $Environment @AnsibleArgs
+wsl --cd $wslPath bash ./deploy.sh $Environment @AnsibleArgs
 exit $LASTEXITCODE

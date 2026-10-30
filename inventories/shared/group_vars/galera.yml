@@ -1,0 +1,8 @@
+---
+# SQL from HAProxy (and peers, for the health-check/admin path); Galera
+# replication (4567), IST (4568) and SST (4444) between cluster members only.
+firewall_rules:
+  - { port: "{{ mysql_port }}", from_hosts: "{{ groups['loadbalancers'] + groups['galera'] }}", comment: MariaDB }
+  - { port: 4567, from_hosts: "{{ groups['galera'] }}", comment: Galera replication }
+  - { port: 4568, from_hosts: "{{ groups['galera'] }}", comment: Galera IST }
+  - { port: 4444, from_hosts: "{{ groups['galera'] }}", comment: Galera SST }

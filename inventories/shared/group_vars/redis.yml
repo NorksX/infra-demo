@@ -1,0 +1,4 @@
+---
+# Clients come through HAProxy; replicas connect directly to the primary.
+firewall_rules:
+  - { port: "{{ redis_port }}", from_hosts: "{{ groups['loadbalancers'] + groups['redis'] }}", comment: Redis }

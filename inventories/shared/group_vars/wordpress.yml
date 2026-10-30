@@ -1,0 +1,4 @@
+---
+# Nginx only accepts traffic from the load balancers.
+firewall_rules:
+  - { port: 80, from_hosts: "{{ groups['loadbalancers'] }}", comment: HTTP from HAProxy }

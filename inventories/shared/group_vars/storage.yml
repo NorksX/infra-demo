@@ -1,0 +1,4 @@
+---
+# NFSv4 needs only 2049/tcp.
+firewall_rules:
+  - { port: 2049, from_hosts: "{{ groups['wordpress'] }}", comment: NFS }

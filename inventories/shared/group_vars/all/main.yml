@@ -1,0 +1,20 @@
+---
+# Defaults shared by every host in every environment.
+# Environment-specific values live in inventories/<env>/group_vars/all/main.yml.
+
+timezone: Europe/Skopje
+store_currency: EUR
+deploy_user: deploy
+
+# --- Ports -------------------------------------------------------------------
+mysql_port: 3306
+redis_port: 6379
+haproxy_stats_port: 8404
+
+# --- WordPress database ------------------------------------------------------
+wp_db_name: wordpress
+wp_db_user: wordpress
+
+# --- Firewall ----------------------------------------------------------------
+# SSH stays reachable from anywhere in the lab (Vagrant forwards it over NAT too).
+firewall_ssh_from: any

@@ -21,12 +21,14 @@ fi
 export ANSIBLE_CONFIG="$PWD/ansible.cfg"
 
 chmod 600 files/deploy_key
-scripts/generate-vault.sh "$ENV_NAME"
+bash scripts/generate-vault.sh "$ENV_NAME"
 
 ansible-galaxy role install -r requirements.yml -p roles/galaxy
 ansible-galaxy collection install -r requirements.yml -p collections
 
+# shared/ first so the environment's own group_vars override it.
 exec ansible-playbook site.yml \
+  -i inventories/shared/hosts.yml \
   -i "inventories/${ENV_NAME}/hosts.yml" \
   --vault-id "${ENV_NAME}@.vault_pass_${ENV_NAME}" \
   "$@"
