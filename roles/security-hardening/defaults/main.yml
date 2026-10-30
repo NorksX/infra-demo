@@ -18,11 +18,15 @@ security_hardening_ssh_login_grace_time: 30
 security_hardening_ssh_client_alive_interval: 300
 security_hardening_ssh_client_alive_count_max: 2
 # Algorithms supported by OpenSSH 9.6 (Ubuntu 24.04) without legacy options.
+# The last two are needed by Vagrant's Ruby SSH client (net-ssh), which has
+# no curve25519; both are in Mozilla's "intermediate" profile.
 security_hardening_ssh_kex:
   - sntrup761x25519-sha512@openssh.com
   - curve25519-sha256
   - curve25519-sha256@libssh.org
   - diffie-hellman-group16-sha512
+  - ecdh-sha2-nistp256
+  - diffie-hellman-group-exchange-sha256
 security_hardening_ssh_ciphers:
   - chacha20-poly1305@openssh.com
   - aes256-gcm@openssh.com
