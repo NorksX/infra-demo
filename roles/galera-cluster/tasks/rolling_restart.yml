@@ -1,0 +1,12 @@
+---
+# Restarts galera_cluster_restart_hosts (default: all play hosts) strictly one at
+# a time; each node must be Synced again before the next one goes down, so the
+# cluster keeps quorum and keeps serving the whole time.
+- name: Restart nodes one at a time
+  ansible.builtin.include_tasks: restart_node.yml
+  loop: "{{ galera_cluster_restart_hosts | default(ansible_play_hosts) }}"
+  loop_control:
+    loop_var: galera_cluster_restart_node
+  when:
+    - galera_cluster_restart_hosts | default(ansible_play_hosts) | length > 0
+    - inventory_hostname == (galera_cluster_restart_hosts | default(ansible_play_hosts) | first)

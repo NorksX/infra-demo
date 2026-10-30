@@ -55,6 +55,35 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 |---|---|
 | `common` | hostname, `/etc/hosts` од инвентарот, chrony, timezone, основни пакети, `deploy` корисник |
 | `security-hardening` | UFW (правила по слој од `firewall_rules`), SSH зацврстување (`sshd -t` валидација), fail2ban, sysctl, автоматски безбедносни ажурирања |
+| `galera-cluster` | Galera конфигурација (`60-galera.cnf`), безбеден bootstrap/опоравок, rolling restart, HTTP health check (порта 9200) за HAProxy |
+
+## База на податоци (MariaDB Galera)
+
+`geerlingguy.mysql` го инсталира MariaDB и ги креира базата и корисникот за WordPress;
+`galera-cluster` ги поврзува трите нода во multi-master кластер.
+
+**Bootstrap и опоравок** — `playbooks/database.yml` е безбеден за повторно извршување во секоја состојба:
+
+| Состојба | Што прави playbook-от |
+|---|---|
+| Свежа инсталација | bootstrap од `galera_cluster_bootstrap_node` (db1), останатите се приклучуваат еден по еден (SST со mariabackup) |
+| Кластерот работи | ништо (`changed=0`); запрените нодови се стартуваат и чекаат `Synced` |
+| Сите нодови се запрени | bootstrap од нодот со `safe_to_bootstrap: 1`, или со највисок `seqno` |
+| Пад (crash, `seqno: -1`) | `galera_recovery` ја чита последната позиција од InnoDB, па се избира најновиот нод |
+
+**Rolling restart** — промена на конфигурацијата никогаш не ги рестартира сите нодови истовремено.
+Handler-от ги рестартира само нодовите чиј процес е постар од конфигурацијата, еден по еден,
+чекајќи `Synced` и `wsrep_cluster_size = 3` пред следниот. Ако извршувањето прекине на половина,
+следното извршување ги довршува преостанатите рестарти.
+
+```bash
+# Рачен rolling restart (на пр. по ажурирање на пакети)
+ansible-playbook playbooks/galera_rolling_restart.yml \
+  -i inventories/shared/hosts.yml -i inventories/staging/hosts.yml --vault-id staging@.vault_pass_staging
+```
+
+Тестирано на staging: свеж bootstrap, промена на конфигурација, запирање по ред (избран е последниот нод),
+симулиран crash на сите три нода, и прекинат rolling restart.
 
 ## Ansible Vault
 

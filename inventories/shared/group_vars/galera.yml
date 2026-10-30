@@ -1,8 +1,40 @@
 ---
-# SQL from HAProxy (and peers, for the health-check/admin path); Galera
-# replication (4567), IST (4568) and SST (4444) between cluster members only.
+# --- geerlingguy.mysql: install MariaDB (not MySQL) and create the WP schema --
+# Its settings are kept static on purpose: a change would trigger that role's
+# handler, which restarts every node at the same time. Tuning that may change
+# goes into galera_cluster_mysqld_settings (rolling restart) instead.
+mysql_packages:
+  - mariadb-server
+  - mariadb-client
+  - mariadb-backup
+  - galera-4
+mysql_daemon: mariadb
+# Write into Ubuntu's include dir instead of replacing my.cnf; galera-cluster's
+# 60-galera.cnf is read after it.
+mysql_config_file: /etc/mysql/mariadb.conf.d/50-server.cnf
+mysql_key_buffer_size: 16M
+mysql_innodb_buffer_pool_size: 128M
+mysql_hide_passwords: true
+
+mysql_databases:
+  - name: "{{ wp_db_name }}"
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+
+# WordPress reaches MariaDB through HAProxy, so connections arrive from the
+# load balancers' addresses inside the private subnet.
+mysql_users:
+  - name: "{{ wp_db_user }}"
+    host: "{{ private_subnet | regex_replace('^(\\d+\\.\\d+\\.\\d+)\\.0/24$', '\\1.%') }}"
+    password: "{{ wp_db_password }}"
+    priv: "{{ wp_db_name }}.*:ALL"
+
+# --- Firewall ----------------------------------------------------------------
+# SQL from HAProxy (and peers); Galera replication (4567), IST (4568) and
+# SST (4444) between members only; health checks (9200) from HAProxy.
 firewall_rules:
   - { port: "{{ mysql_port }}", from_hosts: "{{ groups['loadbalancers'] + groups['galera'] }}", comment: MariaDB }
   - { port: 4567, from_hosts: "{{ groups['galera'] }}", comment: Galera replication }
   - { port: 4568, from_hosts: "{{ groups['galera'] }}", comment: Galera IST }
   - { port: 4444, from_hosts: "{{ groups['galera'] }}", comment: Galera SST }
+  - { port: 9200, from_hosts: "{{ groups['loadbalancers'] }}", comment: Galera health check }

@@ -1,0 +1,17 @@
+---
+# Never restart all nodes at once: only nodes whose running process is older
+# than their config are restarted, one at a time, each Synced before the next.
+- name: Rolling restart Galera
+  ansible.builtin.include_tasks: rolling_restart.yml
+  vars:
+    galera_cluster_restart_hosts: >-
+      {{ ansible_play_hosts
+         | map('extract', hostvars, ['galera_cluster_restart_check', 'stdout'])
+         | zip(ansible_play_hosts) | selectattr('0', 'equalto', 'pending')
+         | map(attribute='1') | list }}
+
+- name: Restart clustercheck socket
+  ansible.builtin.systemd_service:
+    name: galera-clustercheck.socket
+    state: restarted
+    daemon_reload: true

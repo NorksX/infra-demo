@@ -1,0 +1,44 @@
+---
+# Converges the cluster to "every node Synced". Safe to run at any time:
+#   - healthy cluster        -> only stopped nodes are started
+#   - no Primary component   -> bootstrap from the node with the newest data
+#   - fresh install          -> bootstrap from galera_cluster_bootstrap_node
+# Also used before geerlingguy.mysql (playbooks/database.yml) so that a fully
+# stopped cluster is recovered before that role tries to start MariaDB.
+
+- name: Check whether Galera is configured
+  ansible.builtin.stat:
+    path: "{{ galera_cluster_config_file }}"
+  register: galera_cluster_config_stat
+
+- name: Converge the cluster
+  when: galera_cluster_config_stat.stat.exists
+  block:
+    - name: Read node status
+      ansible.builtin.include_tasks: status.yml
+
+    - name: Find nodes in a Primary component
+      ansible.builtin.set_fact:
+        galera_cluster_primary_nodes: >-
+          {{ ansible_play_hosts
+             | map('extract', hostvars, 'galera_cluster_status')
+             | zip(ansible_play_hosts)
+             | selectattr('0.wsrep_cluster_status', 'defined')
+             | selectattr('0.wsrep_cluster_status', 'equalto', 'Primary')
+             | map(attribute='1') | list }}
+
+    - name: Bootstrap the cluster
+      ansible.builtin.include_tasks: bootstrap.yml
+      when: galera_cluster_primary_nodes | length == 0
+
+    # Before anyone joins: the donor needs the SST account.
+    - name: Ensure cluster accounts exist
+      ansible.builtin.include_tasks: users.yml
+      when: inventory_hostname == galera_cluster_primary_nodes | first
+
+    - name: Join the remaining nodes one at a time
+      ansible.builtin.include_tasks: join_node.yml
+      loop: "{{ ansible_play_hosts | difference(galera_cluster_primary_nodes) }}"
+      loop_control:
+        loop_var: galera_cluster_joining_node
+      when: inventory_hostname == galera_cluster_primary_nodes | first

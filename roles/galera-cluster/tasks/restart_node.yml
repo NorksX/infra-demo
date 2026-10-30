@@ -1,0 +1,19 @@
+---
+- name: "Restart MariaDB on {{ galera_cluster_restart_node }}"
+  ansible.builtin.systemd_service:
+    name: mariadb
+    state: restarted
+  delegate_to: "{{ galera_cluster_restart_node }}"
+
+- name: "Wait until the node has rejoined and is Synced: {{ galera_cluster_restart_node }}"
+  ansible.builtin.command: >-
+    mariadb -NBe "SHOW GLOBAL STATUS WHERE Variable_name IN
+    ('wsrep_local_state_comment', 'wsrep_cluster_size')"
+  register: galera_cluster_restart_state
+  until:
+    - "'Synced' in galera_cluster_restart_state.stdout"
+    - galera_cluster_restart_state.stdout is search('wsrep_cluster_size\s+' ~ (galera_cluster_nodes | length))
+  retries: "{{ galera_cluster_sync_retries }}"
+  delay: "{{ galera_cluster_sync_delay }}"
+  changed_when: false
+  delegate_to: "{{ galera_cluster_restart_node }}"

@@ -1,0 +1,24 @@
+# {{ ansible_managed }}
+# Loaded after 50-server.cnf (geerlingguy.mysql), so values here win.
+
+[mysqld]
+{% for key, value in galera_cluster_mysqld_settings | dictsort %}
+{{ key }} = {{ value }}
+{% endfor %}
+
+# Required by Galera
+binlog_format = ROW
+default_storage_engine = InnoDB
+innodb_autoinc_lock_mode = 2
+
+[galera]
+wsrep_on = ON
+wsrep_provider = {{ galera_cluster_provider }}
+wsrep_cluster_name = {{ galera_cluster_name }}
+wsrep_cluster_address = gcomm://{{ galera_cluster_nodes | map('extract', hostvars, 'ansible_host') | join(',') }}
+wsrep_node_name = {{ inventory_hostname }}
+wsrep_node_address = {{ ansible_host }}
+wsrep_provider_options = "gcache.size={{ galera_cluster_gcache_size }}"
+wsrep_slave_threads = {{ galera_cluster_slave_threads }}
+wsrep_sst_method = {{ galera_cluster_sst_method }}
+wsrep_sst_auth = {{ galera_cluster_sst_user }}:{{ galera_cluster_sst_password }}

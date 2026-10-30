@@ -1,0 +1,20 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Minimal HTTP health check for HAProxy, run per connection by systemd.
+# Answers 200 when this Galera node can serve queries, 503 otherwise.
+
+# Consume the request line so the client does not see a reset.
+read -r _request || true
+
+state=$(mariadb --user={{ galera_cluster_check_user }} -NBe "SHOW GLOBAL STATUS LIKE 'wsrep_local_state'" 2>/dev/null | cut -f2)
+
+# wsrep_local_state: 4 = Synced, 2 = Donor/Desynced
+if [ "$state" = "4" ]{% if galera_cluster_check_donor_available %} || [ "$state" = "2" ]{% endif %}; then
+  status="200 OK"; body="Galera node is available (state ${state})"
+else
+  status="503 Service Unavailable"; body="Galera node is not available (state ${state:-down})"
+fi
+
+length=$(printf '%s\n' "$body" | wc -c)
+printf 'HTTP/1.1 %s\r\nContent-Type: text/plain\r\nConnection: close\r\nContent-Length: %d\r\n\r\n%s\n' \
+  "$status" "$length" "$body"

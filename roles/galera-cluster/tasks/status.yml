@@ -1,0 +1,17 @@
+---
+# Sets galera_cluster_status, e.g. {wsrep_cluster_status: Primary,
+# wsrep_local_state_comment: Synced, wsrep_cluster_size: "3"}; {} when down.
+- name: Read wsrep status
+  ansible.builtin.command:
+    cmd: >-
+      mariadb -NBe "SHOW GLOBAL STATUS WHERE Variable_name IN
+      ('wsrep_cluster_status', 'wsrep_local_state_comment', 'wsrep_cluster_size')"
+  register: galera_cluster_status_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse wsrep status
+  ansible.builtin.set_fact:
+    galera_cluster_status: >-
+      {{ dict(galera_cluster_status_raw.stdout_lines | map('split'))
+         if galera_cluster_status_raw.rc == 0 else {} }}

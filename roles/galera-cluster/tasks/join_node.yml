@@ -1,0 +1,17 @@
+---
+# Runs on one host, delegating to the joining node, so nodes join strictly one
+# after another and each is Synced before the next one starts.
+- name: "Start MariaDB on {{ galera_cluster_joining_node }}"
+  ansible.builtin.systemd_service:
+    name: mariadb
+    state: started
+  delegate_to: "{{ galera_cluster_joining_node }}"
+
+- name: "Wait until the node is Synced: {{ galera_cluster_joining_node }}"
+  ansible.builtin.command: mariadb -NBe "SHOW GLOBAL STATUS LIKE 'wsrep_local_state_comment'"
+  register: galera_cluster_join_state
+  until: galera_cluster_join_state.stdout.endswith('Synced')
+  retries: "{{ galera_cluster_sync_retries }}"
+  delay: "{{ galera_cluster_sync_delay }}"
+  changed_when: false
+  delegate_to: "{{ galera_cluster_joining_node }}"

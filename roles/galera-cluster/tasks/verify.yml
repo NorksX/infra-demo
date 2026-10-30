@@ -1,0 +1,12 @@
+---
+- name: Read node status
+  ansible.builtin.include_tasks: status.yml
+
+- name: Every node is Synced and sees the whole cluster
+  ansible.builtin.assert:
+    that:
+      - galera_cluster_status.wsrep_cluster_status | default('') == 'Primary'
+      - galera_cluster_status.wsrep_local_state_comment | default('') == 'Synced'
+      - galera_cluster_status.wsrep_cluster_size | default(0) | int == galera_cluster_nodes | length
+    fail_msg: "{{ inventory_hostname }}: {{ galera_cluster_status }}"
+    quiet: true

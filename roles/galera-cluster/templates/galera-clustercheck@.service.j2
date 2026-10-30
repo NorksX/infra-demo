@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Galera cluster health check request
+
+[Service]
+ExecStart=/usr/local/bin/galera-clustercheck
+User={{ galera_cluster_check_user }}
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

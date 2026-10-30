@@ -7,3 +7,6 @@
 
 - name: Base OS and hardening
   ansible.builtin.import_playbook: playbooks/common.yml
+
+- name: Database tier
+  ansible.builtin.import_playbook: playbooks/database.yml

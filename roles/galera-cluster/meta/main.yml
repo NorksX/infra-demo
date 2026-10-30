@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: galera_cluster
+  author: infra
+  description: MariaDB Galera multi-master cluster — config, safe bootstrap/recovery, rolling restarts, HAProxy health endpoint
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+# MariaDB itself is installed by geerlingguy.mysql (see playbooks/database.yml).
+dependencies: []

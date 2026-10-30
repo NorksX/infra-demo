@@ -1,0 +1,46 @@
+---
+galera_cluster_name: "wp-{{ env_name | default('cluster') }}"
+galera_cluster_group: galera
+galera_cluster_nodes: "{{ groups[galera_cluster_group] }}"
+# Used for a fresh install. After that the node with the most recent data is
+# chosen automatically (safe_to_bootstrap / highest seqno).
+galera_cluster_bootstrap_node: "{{ galera_cluster_nodes | first }}"
+
+galera_cluster_packages:
+  - galera-4
+  - mariadb-backup
+  - socat
+  - rsync
+
+galera_cluster_config_file: /etc/mysql/mariadb.conf.d/60-galera.cnf
+galera_cluster_provider: /usr/lib/galera/libgalera_smm.so
+galera_cluster_datadir: /var/lib/mysql
+galera_cluster_socket: /run/mysqld/mysqld.sock
+
+# State Snapshot Transfer: mariabackup keeps the donor writable during SST.
+galera_cluster_sst_method: mariabackup
+galera_cluster_sst_user: sst
+galera_cluster_sst_password: "{{ galera_sst_password }}"
+
+galera_cluster_gcache_size: 128M
+galera_cluster_slave_threads: 2
+
+# Server tuning lives here (not in geerlingguy.mysql's file) so that changing
+# it triggers this role's rolling restart instead of restarting all nodes.
+galera_cluster_mysqld_settings:
+  bind-address: "0.0.0.0"
+  character-set-server: utf8mb4
+  collation-server: utf8mb4_unicode_ci
+  innodb_buffer_pool_size: 128M
+  innodb_flush_log_at_trx_commit: 2
+  max_connections: 200
+
+# HTTP health endpoint for HAProxy (200 = node Synced, 503 = not usable).
+galera_cluster_check_port: 9200
+galera_cluster_check_user: clustercheck
+# A mariabackup donor keeps serving queries, so it can stay in rotation.
+galera_cluster_check_donor_available: true
+
+# How long to wait for a node to reach Synced (SST of a big DB takes a while).
+galera_cluster_sync_retries: 60
+galera_cluster_sync_delay: 5

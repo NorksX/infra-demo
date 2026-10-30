@@ -1,0 +1,62 @@
+---
+argument_specs:
+  main:
+    short_description: Configure and converge a MariaDB Galera cluster
+    options:
+      galera_cluster_name:
+        type: str
+      galera_cluster_group:
+        type: str
+        description: Inventory group holding the cluster members.
+      galera_cluster_nodes:
+        type: list
+        elements: str
+      galera_cluster_bootstrap_node:
+        type: str
+        description: Node used to bootstrap a fresh cluster.
+      galera_cluster_packages:
+        type: list
+        elements: str
+      galera_cluster_config_file:
+        type: path
+      galera_cluster_provider:
+        type: path
+      galera_cluster_datadir:
+        type: path
+      galera_cluster_socket:
+        type: path
+      galera_cluster_sst_method:
+        type: str
+        choices: [mariabackup, rsync]
+      galera_cluster_sst_user:
+        type: str
+      galera_cluster_sst_password:
+        type: str
+        required: true
+        no_log: true
+      galera_cluster_gcache_size:
+        type: str
+      galera_cluster_slave_threads:
+        type: int
+      galera_cluster_mysqld_settings:
+        type: dict
+        description: "[mysqld] settings rendered into the Galera config (restarts are rolling)."
+      galera_cluster_check_port:
+        type: int
+      galera_cluster_check_user:
+        type: str
+      galera_cluster_check_donor_available:
+        type: bool
+      galera_cluster_sync_retries:
+        type: int
+      galera_cluster_sync_delay:
+        type: int
+  cluster:
+    short_description: Converge the cluster only (start stopped nodes, bootstrap when needed)
+    options: {}
+  rolling_restart:
+    short_description: Restart nodes one at a time, waiting for Synced between them
+    options:
+      galera_cluster_restart_hosts:
+        type: list
+        elements: str

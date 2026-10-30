@@ -1,0 +1,22 @@
+---
+# Two plays on purpose: geerlingguy.mysql's handlers flush at the end of the
+# first play, before galera-cluster verifies (and if needed repairs) the cluster.
+
+- name: Database tier — MariaDB (geerlingguy.mysql)
+  hosts: galera
+  pre_tasks:
+    # If the cluster was fully stopped (e.g. all VMs rebooted), bring it back
+    # first; otherwise geerlingguy.mysql's "start MariaDB" would hang.
+    - name: Recover an existing cluster before touching MariaDB
+      ansible.builtin.include_role:
+        name: galera-cluster
+        tasks_from: cluster.yml
+  roles:
+    - role: geerlingguy.mysql
+      tags: [mysql]
+
+- name: Database tier — Galera cluster
+  hosts: galera
+  roles:
+    - role: galera-cluster
+      tags: [galera]

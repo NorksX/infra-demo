@@ -1,0 +1,19 @@
+---
+# Runs on one node in the Primary component; account changes replicate to the
+# rest of the cluster.
+- name: SST account used by mariabackup on the donor
+  ansible.mysql.mysql_user:
+    name: "{{ galera_cluster_sst_user }}"
+    host: localhost
+    password: "{{ galera_cluster_sst_password }}"
+    priv: "*.*:RELOAD,PROCESS,LOCK TABLES,BINLOG MONITOR"
+    login_unix_socket: "{{ galera_cluster_socket }}"
+  no_log: true
+
+- name: Health check account (unix socket auth, no privileges)
+  ansible.mysql.mysql_user:
+    name: "{{ galera_cluster_check_user }}"
+    host: localhost
+    plugin: unix_socket
+    priv: "*.*:USAGE"
+    login_unix_socket: "{{ galera_cluster_socket }}"

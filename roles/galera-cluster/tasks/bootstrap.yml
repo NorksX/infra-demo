@@ -1,0 +1,76 @@
+---
+# No node is in a Primary component: stop everything, pick the node with the
+# most recent data and start a new cluster from it.
+
+- name: Stop MariaDB everywhere before bootstrapping
+  ansible.builtin.systemd_service:
+    name: mariadb
+    state: stopped
+
+- name: Read the saved Galera state
+  ansible.builtin.slurp:
+    src: "{{ galera_cluster_datadir }}/grastate.dat"
+  register: galera_cluster_grastate
+  failed_when: false
+
+- name: Parse the saved state
+  ansible.builtin.set_fact:
+    galera_cluster_safe_to_bootstrap: "{{ galera_cluster_grastate_text is search('safe_to_bootstrap:\\s*1') }}"
+    galera_cluster_seqno: >-
+      {{ (galera_cluster_grastate_text | regex_search('seqno:\s*(-?\d+)', '\1') or ['-2']) | first | int }}
+  vars:
+    galera_cluster_grastate_text: "{{ galera_cluster_grastate.content | default('') | b64decode }}"
+
+# seqno -1 means an unclean shutdown; ask InnoDB for the real position.
+- name: Recover the last committed position after a crash
+  ansible.builtin.command: galera_recovery
+  register: galera_cluster_recovery
+  changed_when: false
+  when: galera_cluster_seqno | int == -1
+
+- name: Use the recovered position
+  ansible.builtin.set_fact:
+    galera_cluster_seqno: >-
+      {{ (galera_cluster_recovery.stdout | regex_search('wsrep_start_position=[^:]+:(-?\d+)', '\1') or ['-1']) | first | int }}
+  when: galera_cluster_recovery is not skipped
+
+# Preference: the node marked safe_to_bootstrap (last one to leave cleanly),
+# then the highest seqno, then the configured default (fresh install).
+- name: Choose the bootstrap node
+  ansible.builtin.set_fact:
+    galera_cluster_bootstrap_from: >-
+      {{ galera_cluster_safe_nodes | first if galera_cluster_safe_nodes
+         else galera_cluster_newest.inventory_hostname if galera_cluster_newest.galera_cluster_seqno | int >= 0
+         else galera_cluster_bootstrap_node }}
+  vars:
+    galera_cluster_candidates: "{{ ansible_play_hosts | map('extract', hostvars) | list }}"
+    galera_cluster_safe_nodes: >-
+      {{ galera_cluster_candidates | selectattr('galera_cluster_safe_to_bootstrap')
+         | map(attribute='inventory_hostname') | list }}
+    galera_cluster_newest: "{{ galera_cluster_candidates | sort(attribute='galera_cluster_seqno', reverse=true) | first }}"
+  run_once: true
+
+- name: Show the bootstrap decision
+  ansible.builtin.debug:
+    msg: >-
+      Bootstrapping from {{ galera_cluster_bootstrap_from }}
+      (seqno per node: {{ dict(ansible_play_hosts | zip(ansible_play_hosts | map('extract', hostvars, 'galera_cluster_seqno'))) }})
+  run_once: true
+
+- name: Mark the chosen node as safe to bootstrap
+  ansible.builtin.lineinfile:
+    path: "{{ galera_cluster_datadir }}/grastate.dat"
+    regexp: '^safe_to_bootstrap:'
+    line: 'safe_to_bootstrap: 1'
+  when:
+    - inventory_hostname == galera_cluster_bootstrap_from
+    - galera_cluster_grastate.content is defined
+
+- name: Start a new cluster
+  ansible.builtin.command: galera_new_cluster
+  changed_when: true
+  when: inventory_hostname == galera_cluster_bootstrap_from
+
+- name: Continue with the bootstrapped node as the Primary component
+  ansible.builtin.set_fact:
+    galera_cluster_primary_nodes: ["{{ galera_cluster_bootstrap_from }}"]

@@ -15,8 +15,12 @@ roles:
 collections:
   - name: community.general
     version: ">=10.0.0"
+  # community.mysql is now a thin redirect to ansible.mysql; geerlingguy.mysql
+  # still uses the short names, which resolve through it.
   - name: community.mysql
     version: ">=3.10.0"
+  - name: ansible.mysql
+    version: ">=5.0.0"
   - name: ansible.posix
     version: ">=1.6.0"
   - name: community.crypto

@@ -1,0 +1,41 @@
+---
+- name: Install Galera tooling
+  ansible.builtin.apt:
+    name: "{{ galera_cluster_packages }}"
+    state: present
+    lock_timeout: 300
+
+- name: Configure Galera replication and server tuning
+  ansible.builtin.template:
+    src: galera.cnf.j2
+    dest: "{{ galera_cluster_config_file }}"
+    owner: root
+    group: mysql
+    mode: "0640"   # contains the SST password
+  notify: Rolling restart Galera
+
+- name: Bring every node into the cluster
+  ansible.builtin.include_tasks: cluster.yml
+
+# Catches config changes from this run *and* restarts left over from an
+# earlier run that failed half-way through a rolling restart.
+- name: Find nodes running with an older config than the one on disk
+  ansible.builtin.shell: |
+    set -o pipefail
+    started=$(systemctl show -p ExecMainStartTimestamp --value --timestamp=unix mariadb | tr -d @)
+    written=$(stat -c %Y {{ galera_cluster_config_file }})
+    if [ "$written" -gt "${started:-0}" ]; then echo pending; else echo current; fi
+  args:
+    executable: /bin/bash
+  register: galera_cluster_restart_check
+  changed_when: galera_cluster_restart_check.stdout == 'pending'
+  notify: Rolling restart Galera
+
+- name: Health check endpoint for HAProxy
+  ansible.builtin.include_tasks: clustercheck.yml
+
+- name: Apply pending restarts before verifying
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify the cluster
+  ansible.builtin.include_tasks: verify.yml

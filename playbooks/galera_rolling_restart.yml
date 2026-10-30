@@ -1,0 +1,24 @@
+---
+# Restart every Galera node one at a time without losing quorum, e.g. after a
+# kernel/package update:
+#
+#   ansible-playbook playbooks/galera_rolling_restart.yml \
+#     -i inventories/shared/hosts.yml -i inventories/staging/hosts.yml \
+#     --vault-id staging@.vault_pass_staging
+- name: Rolling restart of the Galera cluster
+  hosts: galera
+  tasks:
+    - name: Make sure the cluster is healthy before starting
+      ansible.builtin.include_role:
+        name: galera-cluster
+        tasks_from: verify.yml
+
+    - name: Restart nodes one at a time
+      ansible.builtin.include_role:
+        name: galera-cluster
+        tasks_from: rolling_restart.yml
+
+    - name: Verify the cluster afterwards
+      ansible.builtin.include_role:
+        name: galera-cluster
+        tasks_from: verify.yml
