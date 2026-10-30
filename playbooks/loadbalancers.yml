@@ -1,0 +1,8 @@
+---
+# Runs before the web tier: WordPress reaches MariaDB and Redis through these
+# listeners. The web backend shows DOWN until the WordPress nodes are up.
+- name: Load balancer tier — HAProxy (+ keepalived in production)
+  hosts: loadbalancers
+  roles:
+    - role: haproxy-config
+      tags: [haproxy]

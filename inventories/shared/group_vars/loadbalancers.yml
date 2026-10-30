@@ -9,3 +9,16 @@ firewall_rules:
   - { port: "{{ redis_port }}", from_hosts: "{{ groups['wordpress'] }}", comment: Redis via HAProxy }
   # keepalived peers talk VRRP (IP protocol 112), which UFW can't name: allow all from peers.
   - { from_hosts: "{{ groups['loadbalancers'] | difference([inventory_hostname]) }}", comment: VRRP peer }
+
+# Brute-force protection for wp-login.php. It has to live here: only HAProxy
+# sees the real client address at the network level. A failed WordPress login
+# answers 200 (a successful one redirects), so repeated 200s to POST
+# /wp-login.php from one address get it banned from 80/443.
+fail2ban_jails:
+  - name: haproxy-wp-login
+    logpath: /var/log/haproxy.log
+    logowner: syslog   # written by rsyslog (49-haproxy.conf from the haproxy package)
+    port: http,https
+    maxretry: 10
+    findtime: 5m
+    failregex: '^.*haproxy\[\d+\]: <HOST>:\d+ \[[^\]]+\] \S+ \S+ \S+ 200 .*"POST /wp-login\.php'

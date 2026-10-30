@@ -1,0 +1,57 @@
+---
+- name: Create the certificate directory
+  ansible.builtin.file:
+    path: "{{ haproxy_config_tls_dir }}"
+    state: directory
+    owner: root
+    group: haproxy
+    mode: "0750"
+
+# One key/cert for the whole tier: whichever LB holds the VIP must present
+# the same certificate.
+- name: Generate the key and certificate on the first load balancer
+  run_once: true
+  delegate_to: "{{ groups[haproxy_config_lb_group] | first }}"
+  block:
+    - name: Private key
+      community.crypto.openssl_privatekey:
+        path: "{{ haproxy_config_tls_dir }}/site.key"
+        type: RSA
+        size: 2048
+        mode: "0600"
+
+    - name: Certificate signing request
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: "{{ haproxy_config_tls_dir }}/site.key"
+        common_name: "{{ haproxy_config_tls_names | first }}"
+        subject_alt_name: >-
+          {{ haproxy_config_tls_names | map('regex_replace', '^', 'DNS:') | list
+             + ['IP:' ~ haproxy_config_keepalived_vip] }}
+      register: haproxy_config_csr
+      changed_when: false
+
+    - name: Self-signed certificate
+      community.crypto.x509_certificate:
+        path: "{{ haproxy_config_tls_dir }}/site.crt"
+        csr_content: "{{ haproxy_config_csr.csr }}"
+        privatekey_path: "{{ haproxy_config_tls_dir }}/site.key"
+        provider: selfsigned
+        selfsigned_not_after: "+{{ haproxy_config_tls_valid_days }}d"
+        mode: "0644"
+
+    - name: Read the key and certificate
+      ansible.builtin.slurp:
+        src: "{{ haproxy_config_tls_dir }}/{{ item }}"
+      loop: [site.crt, site.key]
+      register: haproxy_config_tls_files
+      no_log: true
+
+- name: Install the PEM bundle on every load balancer
+  ansible.builtin.copy:
+    dest: "{{ haproxy_config_tls_dir }}/site.pem"
+    content: "{{ haproxy_config_tls_files.results | map(attribute='content') | map('b64decode') | join('') }}"
+    owner: root
+    group: haproxy
+    mode: "0640"
+  no_log: true
+  notify: Reload haproxy

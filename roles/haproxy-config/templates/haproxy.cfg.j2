@@ -1,0 +1,103 @@
+# {{ ansible_managed }}
+# Backends are generated from the inventory groups: {{ haproxy_config_web_group }},
+# {{ haproxy_config_db_group }}, {{ haproxy_config_redis_group }}.
+
+global
+    log 127.0.0.1:{{ haproxy_config_syslog_port }} local0
+    log 127.0.0.1:{{ haproxy_config_syslog_port }} local1 notice
+    chroot /var/lib/haproxy
+    stats socket {{ haproxy_config_socket }} mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn {{ haproxy_config_maxconn }}
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    option redispatch
+    retries 3
+    timeout connect 5s
+    timeout client 60s
+    timeout server 60s
+    timeout http-request 10s
+    timeout http-keep-alive 10s
+    timeout check 3s
+
+# ---------------------------------------------------------------- web ------
+frontend http
+    bind *:80
+    http-request redirect scheme https code 301
+
+frontend https
+    bind *:443 ssl crt {{ haproxy_config_tls_dir }}/site.pem alpn h2,http/1.1
+    option forwardfor
+    http-request set-header X-Forwarded-Proto https
+    http-response set-header Strict-Transport-Security "max-age=31536000"
+    default_backend wordpress
+
+backend wordpress
+    balance roundrobin
+    # Sticky sessions: the first response sets SERVERID=<node>; later requests
+    # stick to that node. If it goes DOWN, redispatch picks a healthy one.
+    cookie {{ haproxy_config_sticky_cookie }} insert indirect nocache httponly secure
+    option httpchk
+    http-check send meth GET uri {{ haproxy_config_health_path }} ver HTTP/1.1 hdr Host {{ haproxy_config_domain }}
+    http-check expect status 200
+    default-server inter {{ haproxy_config_check_inter }} fall {{ haproxy_config_check_fall }} rise {{ haproxy_config_check_rise }}
+{% for host in groups[haproxy_config_web_group] %}
+    server {{ host }} {{ hostvars[host].ansible_host }}:{{ haproxy_config_web_port }} cookie {{ host }} check
+{% endfor %}
+
+# -------------------------------------------------------------- mariadb ----
+listen mariadb
+    bind *:{{ haproxy_config_db_port }}
+    mode tcp
+    option tcplog
+    timeout client 30m
+    timeout server 30m
+    # galera-cluster's :{{ haproxy_config_db_check_port }} endpoint returns 200 only when the node is Synced.
+    option httpchk
+    http-check expect status 200
+    default-server port {{ haproxy_config_db_check_port }} inter {{ haproxy_config_check_inter }} fall {{ haproxy_config_check_fall }} rise {{ haproxy_config_check_rise }} on-marked-down shutdown-sessions
+{% for host in groups[haproxy_config_db_group] %}
+    server {{ host }} {{ hostvars[host].ansible_host }}:{{ haproxy_config_db_port }} check{{ '' if host == haproxy_config_db_primary else ' backup' }}
+{% endfor %}
+
+# ---------------------------------------------------------------- redis ----
+listen redis
+    bind *:{{ haproxy_config_redis_port }}
+    mode tcp
+    option tcplog
+    timeout client 30m
+    timeout server 30m
+    # Only the node that reports role:master receives clients.
+    option tcp-check
+    tcp-check connect
+    tcp-check send AUTH\ {{ haproxy_config_redis_password }}\r\n
+    tcp-check expect string +OK
+    tcp-check send PING\r\n
+    tcp-check expect string +PONG
+    tcp-check send info\ replication\r\n
+    tcp-check expect string role:master
+    tcp-check send QUIT\r\n
+    tcp-check expect string +OK
+    default-server inter 2s fall 2 rise 2 on-marked-down shutdown-sessions
+{% for host in groups[haproxy_config_redis_group] %}
+    server {{ host }} {{ hostvars[host].ansible_host }}:{{ haproxy_config_redis_port }} check
+{% endfor %}
+
+# ---------------------------------------------------------------- stats ----
+listen stats
+    bind *:{{ haproxy_config_stats_port }}
+    stats enable
+    stats uri /
+    stats refresh 5s
+    stats show-legends
+    stats auth {{ haproxy_config_stats_user }}:{{ haproxy_config_stats_password }}

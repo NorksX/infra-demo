@@ -1,0 +1,30 @@
+---
+- name: Install keepalived
+  ansible.builtin.apt:
+    name: keepalived
+    state: present
+    lock_timeout: 300
+
+- name: Find the interface that carries the private network
+  ansible.builtin.set_fact:
+    haproxy_config_keepalived_interface: >-
+      {{ ansible_facts.interfaces | map('replace', '-', '_')
+         | map('extract', ansible_facts)
+         | selectattr('ipv4', 'defined')
+         | selectattr('ipv4.address', 'equalto', ansible_host)
+         | map(attribute='device') | first }}
+
+- name: Configure VRRP
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0600"   # contains the VRRP password
+  notify: Reload keepalived
+
+- name: Ensure keepalived is running
+  ansible.builtin.systemd_service:
+    name: keepalived
+    state: started
+    enabled: true

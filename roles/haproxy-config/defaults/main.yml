@@ -1,0 +1,48 @@
+---
+haproxy_config_lb_group: loadbalancers
+haproxy_config_maxconn: 4096
+haproxy_config_socket: /run/haproxy/admin.sock
+# rsyslog listens on 127.0.0.1 only; the request log feeds the wp-login jail.
+haproxy_config_syslog_port: 514
+
+# --- Web backend (sticky sessions + health checks) ---------------------------
+haproxy_config_domain: "{{ domain }}"
+haproxy_config_web_group: wordpress
+haproxy_config_web_port: 80
+haproxy_config_health_path: /healthz
+haproxy_config_sticky_cookie: SERVERID
+haproxy_config_check_inter: 3s
+haproxy_config_check_fall: 3
+haproxy_config_check_rise: 2
+
+# --- MariaDB Galera (one writer, others as hot standby) ----------------------
+# Sending all writes to one node avoids Galera certification conflicts while
+# the cluster stays multi-master; failover to a backup node is automatic.
+haproxy_config_db_group: galera
+haproxy_config_db_port: "{{ mysql_port | default(3306) }}"
+haproxy_config_db_check_port: 9200
+haproxy_config_db_primary: "{{ groups[haproxy_config_db_group] | first }}"
+
+# --- Redis (only the node reporting role:master gets traffic) ----------------
+haproxy_config_redis_group: redis
+haproxy_config_redis_port: "{{ redis_port | default(6379) }}"
+haproxy_config_redis_password: "{{ redis_password }}"
+
+# --- Stats page --------------------------------------------------------------
+haproxy_config_stats_port: "{{ haproxy_stats_port | default(8404) }}"
+haproxy_config_stats_user: admin
+haproxy_config_stats_password: "{{ haproxy_stats_password }}"
+
+# --- TLS (self-signed, generated once and shared by all load balancers) -----
+haproxy_config_tls_dir: /etc/haproxy/certs
+haproxy_config_tls_names: ["{{ domain }}"]
+haproxy_config_tls_valid_days: 825
+
+# --- keepalived floating IP --------------------------------------------------
+haproxy_config_keepalived_enabled: "{{ keepalived_enabled | default(false) }}"
+haproxy_config_keepalived_vip: "{{ lb_vip }}"
+haproxy_config_keepalived_vip_prefix: 24
+haproxy_config_keepalived_router_id: 51
+# Highest priority holds the VIP; set per host in host_vars.
+haproxy_config_keepalived_priority: "{{ keepalived_priority | default(100) }}"
+haproxy_config_keepalived_password: "{{ keepalived_auth_password }}"

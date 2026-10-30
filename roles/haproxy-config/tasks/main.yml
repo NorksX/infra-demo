@@ -1,0 +1,49 @@
+---
+- name: Install HAProxy
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - python3-cryptography   # community.crypto on the first load balancer
+      - socat                  # admin socket access (show stat, drain)
+    state: present
+    lock_timeout: 300
+
+- name: Let rsyslog receive HAProxy's logs on loopback
+  ansible.builtin.template:
+    src: rsyslog-haproxy.conf.j2
+    dest: /etc/rsyslog.d/48-haproxy-udp.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart rsyslog
+
+- name: TLS certificate
+  ansible.builtin.include_tasks: tls.yml
+
+- name: Render haproxy.cfg
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: haproxy
+    mode: "0640"   # contains the Redis and stats passwords
+    validate: haproxy -c -f %s
+  notify: Reload haproxy
+
+- name: Ensure HAProxy is running
+  ansible.builtin.systemd_service:
+    name: haproxy
+    state: started
+    enabled: true
+
+- name: Floating IP (keepalived)
+  ansible.builtin.include_tasks: keepalived.yml
+  when: haproxy_config_keepalived_enabled | bool
+
+- name: Apply a pending reload before checking the listeners
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the HTTPS listener
+  ansible.builtin.wait_for:
+    port: 443
+    timeout: 30

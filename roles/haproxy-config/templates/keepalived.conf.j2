@@ -1,0 +1,43 @@
+# {{ ansible_managed }}
+global_defs {
+    router_id {{ inventory_hostname }}
+    script_user root
+    enable_script_security
+}
+
+# Give up the VIP when HAProxy on this node is not running.
+vrrp_script chk_haproxy {
+    script "/usr/bin/systemctl is-active --quiet haproxy"
+    interval 2
+    fall 2
+    rise 2
+}
+
+vrrp_instance VI_WEB {
+    state {{ 'MASTER' if haproxy_config_keepalived_priority | int == (groups[haproxy_config_lb_group] | map('extract', hostvars, 'keepalived_priority') | map('default', 100) | map('int') | max) else 'BACKUP' }}
+    interface {{ haproxy_config_keepalived_interface }}
+    virtual_router_id {{ haproxy_config_keepalived_router_id }}
+    priority {{ haproxy_config_keepalived_priority }}
+    advert_int 1
+
+    # Unicast VRRP: works on any network, and the firewall only has to trust the peers.
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+{% for host in groups[haproxy_config_lb_group] | difference([inventory_hostname]) %}
+        {{ hostvars[host].ansible_host }}
+{% endfor %}
+    }
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ haproxy_config_keepalived_password[:8] }}
+    }
+
+    virtual_ipaddress {
+        {{ haproxy_config_keepalived_vip }}/{{ haproxy_config_keepalived_vip_prefix }} dev {{ haproxy_config_keepalived_interface }}
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}

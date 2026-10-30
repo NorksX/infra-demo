@@ -1,0 +1,3 @@
+---
+# Normally holds the VIP; haproxy2 takes over when this node or its HAProxy fails.
+keepalived_priority: 150

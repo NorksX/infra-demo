@@ -59,6 +59,23 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 | `nfs-server` | NFSv4 export за `wp-content/uploads`, дозволен само за WordPress нодовите (`root_squash`) |
 | `nfs-client` | Монтирање на споделените uploads на секој WordPress нод (трајно во fstab) |
 
+## Load balancer (HAProxy)
+
+`haproxy-config` го генерира `haproxy.cfg` од инвентарот (секој нов хост во групата автоматски станува backend):
+
+| Listener | Порта | Логика |
+|---|---|---|
+| `http` | 80 | 301 пренасочување кон HTTPS |
+| `https` → `wordpress` | 443 | roundrobin, sticky sessions (`SERVERID` cookie), health check `GET /healthz`, `redispatch` при пад на нод |
+| `mariadb` | 3306 | еден активен Galera нод, останатите `backup`; health check на порта 9200 (само `Synced` нодови) |
+| `redis` | 6379 | tcp-check `AUTH` → `PING` → `info replication` — сообраќај добива само нодот со `role:master` |
+| `stats` | 8404 | статистика со лозинка од vault (достапна само од приватната мрежа) |
+
+- TLS сертификат (self-signed, SAN = домен + VIP) се генерира еднаш на првиот LB и се дистрибуира на останатите.
+- `validate: haproxy -c -f %s` — неисправна конфигурација никогаш не се инсталира; handler-от прави `reload` без прекин на конекциите.
+- Production: **keepalived** VIP (`192.168.56.10`) со unicast VRRP; приоритетите се во `host_vars/haproxy1.yml` и `haproxy2.yml`.
+- fail2ban jail `haproxy-wp-login` на LB ги блокира (само 80/443) адресите со повеќе неуспешни најави на `wp-login.php`.
+
 Redis го инсталира `geerlingguy.redis` (лозинка од vault, bind на приватната IP).
 Во production `cache2` е реплика на `cache1` — дефинирано во `host_vars/cache2.yml` (`redis_replica_of`).
 

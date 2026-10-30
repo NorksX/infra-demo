@@ -54,13 +54,16 @@ security_hardening_fail2ban_enabled: true
 security_hardening_fail2ban_bantime: 1h
 security_hardening_fail2ban_findtime: 10m
 security_hardening_fail2ban_maxretry: 5
-security_hardening_fail2ban_banaction: ufw
+# Port-scoped bans: a client banned for wp-login abuse loses 80/443 only, not
+# SSH (the lab's Windows host is both the browser and the Ansible controller).
+security_hardening_fail2ban_banaction: nftables-multiport
 security_hardening_fail2ban_ignoreip:
   - 127.0.0.1/8
   - "::1"
 # Extra jails from group_vars `fail2ban_jails`. Each jail is a dict:
 #   name, logpath, port, failregex (rendered into filter.d/<name>.conf),
-#   optional maxretry / findtime / bantime.
+#   optional maxretry / findtime / bantime, and logowner (account that writes
+#   the log, default root; e.g. syslog for files written by rsyslog).
 security_hardening_fail2ban_jails: "{{ fail2ban_jails | default([]) }}"
 
 # --- Kernel ------------------------------------------------------------------

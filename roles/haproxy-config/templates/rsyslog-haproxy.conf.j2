@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# HAProxy logs over UDP on loopback. The packaged unix socket inside HAProxy's
+# chroot doesn't work on Ubuntu: rsyslog's AppArmor profile rejects messages
+# from the chroot ("disconnected path"). 49-haproxy.conf still routes the
+# messages to /var/log/haproxy.log.
+module(load="imudp")
+input(type="imudp" address="127.0.0.1" port="{{ haproxy_config_syslog_port }}")

@@ -1,0 +1,75 @@
+---
+argument_specs:
+  main:
+    short_description: Configure HAProxy (and optionally keepalived) for the platform
+    options:
+      haproxy_config_lb_group:
+        type: str
+      haproxy_config_maxconn:
+        type: int
+      haproxy_config_socket:
+        type: path
+        description: Admin socket, used by rolling updates to drain servers.
+      haproxy_config_syslog_port:
+        type: int
+      haproxy_config_domain:
+        type: str
+      haproxy_config_web_group:
+        type: str
+      haproxy_config_web_port:
+        type: int
+      haproxy_config_health_path:
+        type: str
+      haproxy_config_sticky_cookie:
+        type: str
+      haproxy_config_check_inter:
+        type: str
+      haproxy_config_check_fall:
+        type: int
+      haproxy_config_check_rise:
+        type: int
+      haproxy_config_db_group:
+        type: str
+      haproxy_config_db_port:
+        type: int
+      haproxy_config_db_check_port:
+        type: int
+      haproxy_config_db_primary:
+        type: str
+        description: Galera node that receives writes; the others are backups.
+      haproxy_config_redis_group:
+        type: str
+      haproxy_config_redis_port:
+        type: int
+      haproxy_config_redis_password:
+        type: str
+        required: true
+        no_log: true
+      haproxy_config_stats_port:
+        type: int
+      haproxy_config_stats_user:
+        type: str
+      haproxy_config_stats_password:
+        type: str
+        required: true
+        no_log: true
+      haproxy_config_tls_dir:
+        type: path
+      haproxy_config_tls_names:
+        type: list
+        elements: str
+      haproxy_config_tls_valid_days:
+        type: int
+      haproxy_config_keepalived_enabled:
+        type: bool
+      haproxy_config_keepalived_vip:
+        type: str
+      haproxy_config_keepalived_vip_prefix:
+        type: int
+      haproxy_config_keepalived_router_id:
+        type: int
+      haproxy_config_keepalived_priority:
+        type: int
+      haproxy_config_keepalived_password:
+        type: str
+        no_log: true

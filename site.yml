@@ -16,3 +16,6 @@
 
 - name: Cache tier
   ansible.builtin.import_playbook: playbooks/cache.yml
+
+- name: Load balancer tier
+  ansible.builtin.import_playbook: playbooks/loadbalancers.yml
