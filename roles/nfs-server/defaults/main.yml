@@ -1,0 +1,9 @@
+---
+nfs_server_export_path: /srv/nfs/wp-uploads
+# Hosts allowed to mount the export (resolved to their ansible_host IPs).
+nfs_server_clients: "{{ groups['wordpress'] | default([]) }}"
+nfs_server_export_options: rw,sync,no_subtree_check,root_squash
+# Files are written by PHP-FPM as www-data, which has uid/gid 33 on Ubuntu.
+nfs_server_export_owner: "33"
+nfs_server_export_group: "33"
+nfs_server_threads: 8

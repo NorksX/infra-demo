@@ -1,0 +1,12 @@
+---
+- name: Storage tier — NFS server for shared uploads
+  hosts: storage
+  roles:
+    - role: nfs-server
+      tags: [nfs]
+
+- name: Storage tier — mount shared uploads on the web nodes
+  hosts: wordpress
+  roles:
+    - role: nfs-client
+      tags: [nfs]

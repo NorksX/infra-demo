@@ -1,0 +1,14 @@
+---
+argument_specs:
+  main:
+    short_description: Mount an NFSv4 export from an inventory host
+    options:
+      nfs_client_server:
+        type: str
+        description: Inventory hostname of the NFS server.
+      nfs_client_export_path:
+        type: path
+      nfs_client_mount_path:
+        type: path
+      nfs_client_mount_options:
+        type: str

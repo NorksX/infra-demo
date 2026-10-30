@@ -11,6 +11,10 @@ mysql_port: 3306
 redis_port: 6379
 haproxy_stats_port: 8404
 
+# --- WordPress ---------------------------------------------------------------
+# Document root on every web node; wp-content/uploads inside it is the NFS mount.
+wp_docroot: /var/www/wordpress
+
 # --- WordPress database ------------------------------------------------------
 wp_db_name: wordpress
 wp_db_user: wordpress

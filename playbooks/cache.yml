@@ -1,0 +1,13 @@
+---
+- name: Cache tier — Redis (object cache and PHP sessions)
+  hosts: redis
+  pre_tasks:
+    # Redis warns (and background saves can fail) without overcommit.
+    - name: Allow memory overcommit for Redis background saves
+      ansible.posix.sysctl:
+        name: vm.overcommit_memory
+        value: "1"
+        sysctl_file: /etc/sysctl.d/80-redis.conf
+  roles:
+    - role: geerlingguy.redis
+      tags: [redis]

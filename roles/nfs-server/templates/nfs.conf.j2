@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[nfsd]
+threads = {{ nfs_server_threads }}
+vers3 = n
+vers4.0 = n
+vers4.1 = y
+vers4.2 = y
+
+[mountd]
+manage-gids = y

@@ -1,4 +1,20 @@
 ---
+# --- geerlingguy.redis ---------------------------------------------------------
+redis_bind_interface: "127.0.0.1 {{ ansible_host }}"
+redis_requirepass: "{{ redis_password }}"
+# Object cache + PHP sessions; a replica set in host_vars (redis_replica_of)
+# follows its primary. Replicas authenticate with the same password.
+redis_maxmemory: 192mb
+redis_maxmemory_policy: allkeys-lru
+redis_disabled_commands: [DEBUG]
+redis_extra_config: |
+  masterauth {{ redis_password }}
+  replica-read-only yes
+  {% if redis_replica_of is defined %}
+  replicaof {{ hostvars[redis_replica_of].ansible_host }} {{ redis_port }}
+  {% endif %}
+
+# --- Firewall ----------------------------------------------------------------
 # Clients come through HAProxy; replicas connect directly to the primary.
 firewall_rules:
   - { port: "{{ redis_port }}", from_hosts: "{{ groups['loadbalancers'] + groups['redis'] }}", comment: Redis }

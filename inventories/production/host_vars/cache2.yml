@@ -1,0 +1,4 @@
+---
+# cache2 replicates cache1. HAProxy only sends clients to whichever node
+# reports role:master, so clients never write to the replica.
+redis_replica_of: cache1

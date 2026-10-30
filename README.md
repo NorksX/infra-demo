@@ -56,6 +56,11 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 | `common` | hostname, `/etc/hosts` од инвентарот, chrony, timezone, основни пакети, `deploy` корисник |
 | `security-hardening` | UFW (правила по слој од `firewall_rules`), SSH зацврстување (`sshd -t` валидација), fail2ban, sysctl, автоматски безбедносни ажурирања |
 | `galera-cluster` | Galera конфигурација (`60-galera.cnf`), безбеден bootstrap/опоравок, rolling restart, HTTP health check (порта 9200) за HAProxy |
+| `nfs-server` | NFSv4 export за `wp-content/uploads`, дозволен само за WordPress нодовите (`root_squash`) |
+| `nfs-client` | Монтирање на споделените uploads на секој WordPress нод (трајно во fstab) |
+
+Redis го инсталира `geerlingguy.redis` (лозинка од vault, bind на приватната IP).
+Во production `cache2` е реплика на `cache1` — дефинирано во `host_vars/cache2.yml` (`redis_replica_of`).
 
 ## База на податоци (MariaDB Galera)
 

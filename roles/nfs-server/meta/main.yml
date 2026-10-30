@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: nfs_server
+  author: infra
+  description: NFSv4-only export for shared WordPress uploads, restricted to the web tier
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

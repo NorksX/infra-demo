@@ -1,0 +1,6 @@
+---
+nfs_client_server: "{{ groups['storage'] | first }}"
+nfs_client_export_path: /srv/nfs/wp-uploads
+nfs_client_mount_path: "{{ wp_docroot | default('/var/www/wordpress') }}/wp-content/uploads"
+# hard: block instead of returning I/O errors if nfs1 is briefly unreachable.
+nfs_client_mount_options: rw,hard,noatime,vers=4.2,_netdev

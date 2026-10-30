@@ -10,3 +10,9 @@
 
 - name: Database tier
   ansible.builtin.import_playbook: playbooks/database.yml
+
+- name: Storage tier
+  ansible.builtin.import_playbook: playbooks/storage.yml
+
+- name: Cache tier
+  ansible.builtin.import_playbook: playbooks/cache.yml

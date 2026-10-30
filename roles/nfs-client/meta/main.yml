@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: nfs_client
+  author: infra
+  description: Mount the shared NFSv4 uploads directory (persisted in fstab)
+  license: MIT
+  min_ansible_version: "2.17"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

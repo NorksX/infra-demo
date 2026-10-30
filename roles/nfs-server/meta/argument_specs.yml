@@ -1,0 +1,19 @@
+---
+argument_specs:
+  main:
+    short_description: Export a directory over NFSv4 to selected inventory hosts
+    options:
+      nfs_server_export_path:
+        type: path
+      nfs_server_clients:
+        type: list
+        elements: str
+        description: Inventory hosts allowed to mount the export.
+      nfs_server_export_options:
+        type: str
+      nfs_server_export_owner:
+        type: str
+      nfs_server_export_group:
+        type: str
+      nfs_server_threads:
+        type: int

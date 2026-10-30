@@ -1,0 +1,31 @@
+---
+- name: Install the NFS client
+  ansible.builtin.apt:
+    name: nfs-common
+    state: present
+    lock_timeout: 300
+
+# Only create the directory while nothing is mounted: with root_squash, root
+# on the client can't change the mounted directory, so the task would fail.
+- name: Check whether the share is already mounted
+  ansible.builtin.command: findmnt --noheadings --target {{ nfs_client_mount_path }} --types nfs4
+  register: nfs_client_findmnt
+  changed_when: false
+  failed_when: false
+
+- name: Create the mount point
+  ansible.builtin.file:
+    path: "{{ nfs_client_mount_path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: nfs_client_findmnt.rc != 0
+
+- name: Mount the shared uploads directory
+  ansible.posix.mount:
+    src: "{{ hostvars[nfs_client_server].ansible_host }}:{{ nfs_client_export_path }}"
+    path: "{{ nfs_client_mount_path }}"
+    fstype: nfs4
+    opts: "{{ nfs_client_mount_options }}"
+    state: mounted

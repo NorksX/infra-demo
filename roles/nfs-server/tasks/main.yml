@@ -1,0 +1,39 @@
+---
+- name: Install the NFS server
+  ansible.builtin.apt:
+    name: nfs-kernel-server
+    state: present
+    lock_timeout: 300
+
+- name: Create the export directory
+  ansible.builtin.file:
+    path: "{{ nfs_server_export_path }}"
+    state: directory
+    owner: "{{ nfs_server_export_owner }}"
+    group: "{{ nfs_server_export_group }}"
+    mode: "0775"
+
+# NFSv4 only: no rpcbind/mountd, so the firewall needs nothing but 2049/tcp.
+- name: Configure nfsd
+  ansible.builtin.template:
+    src: nfs.conf.j2
+    dest: /etc/nfs.conf.d/90-platform.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nfs-server
+
+- name: Configure exports
+  ansible.builtin.template:
+    src: exports.j2
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload exports
+
+- name: Ensure the NFS server is running
+  ansible.builtin.systemd_service:
+    name: nfs-server
+    state: started
+    enabled: true
