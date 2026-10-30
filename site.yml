@@ -22,3 +22,6 @@
 
 - name: Web tier
   ansible.builtin.import_playbook: playbooks/webservers.yml
+
+- name: End-to-end verification
+  ansible.builtin.import_playbook: playbooks/verify.yml

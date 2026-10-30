@@ -1,6 +1,12 @@
 ---
+# Half of the web nodes at a time: a failing batch stops the run
+# (max_fail_percentage: 0) while the other half keeps serving. Config changes
+# only reload Nginx/PHP-FPM gracefully, so no drain is needed here; version
+# upgrades go through rolling_update.yml, which drains each node first.
 - name: Web tier — Nginx + PHP-FPM + WordPress/WooCommerce
   hosts: wordpress
+  serial: "{{ web_serial | default('50%') }}"
+  max_fail_percentage: 0
   roles:
     - role: geerlingguy.php
       tags: [php]

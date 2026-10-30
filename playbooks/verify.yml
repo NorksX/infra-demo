@@ -1,0 +1,109 @@
+---
+# End-to-end smoke test from the control node, through the load balancer
+# exactly like a customer: HTTPS, sticky sessions, the shop, and a real
+# WooCommerce order (cash on delivery) that is deleted again afterwards.
+- name: Verify the platform end to end
+  # Implicit localhost connects locally; no play-level `connection: local`,
+  # or the cleanup task delegated to the web node would run here too.
+  hosts: localhost
+  gather_facts: false
+  become: false
+  vars:
+    verify_lb: "{{ hostvars[groups['loadbalancers'] | first].lb_vip }}"
+    verify_domain: "{{ hostvars[groups['loadbalancers'] | first].domain }}"
+    verify_base: "https://{{ verify_lb }}"
+    verify_headers:
+      Host: "{{ verify_domain }}"
+    verify_sku: MUG-001
+  tasks:
+    - name: HTTP is redirected to HTTPS
+      ansible.builtin.uri:
+        url: "http://{{ verify_lb }}/"
+        headers: "{{ verify_headers }}"
+        follow_redirects: none
+        status_code: 301
+
+    - name: Home page answers over HTTPS and sets the sticky cookie
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/"
+        headers: "{{ verify_headers }}"
+        validate_certs: false
+        return_content: false
+      register: verify_home
+      failed_when: verify_home.status != 200 or 'SERVERID=' not in (verify_home.set_cookie | default(''))
+
+    - name: Shop page lists the sample products
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/shop/"
+        headers: "{{ verify_headers }}"
+        validate_certs: false
+        return_content: true
+      register: verify_shop
+      failed_when: verify_shop.status != 200 or 'Coffee mug' not in verify_shop.content
+
+    - name: Find the test product through the Store API
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/wp-json/wc/store/v1/products?sku={{ verify_sku }}"
+        headers: "{{ verify_headers }}"
+        validate_certs: false
+      register: verify_product
+      failed_when: verify_product.json | length != 1
+
+    - name: Start a cart
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/wp-json/wc/store/v1/cart"
+        headers: "{{ verify_headers }}"
+        validate_certs: false
+      register: verify_cart
+
+    - name: Add the product to the cart
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/wp-json/wc/store/v1/cart/add-item"
+        method: POST
+        headers: "{{ verify_headers | combine({'Cart-Token': verify_cart.cart_token}) }}"
+        body_format: json
+        body: { id: "{{ verify_product.json[0].id }}", quantity: 1 }
+        validate_certs: false
+        status_code: [200, 201]
+
+    - name: Place the order (cash on delivery)
+      ansible.builtin.uri:
+        url: "{{ verify_base }}/wp-json/wc/store/v1/checkout"
+        method: POST
+        headers: "{{ verify_headers | combine({'Cart-Token': verify_cart.cart_token}) }}"
+        body_format: json
+        body:
+          payment_method: cod
+          billing_address: &verify_address
+            first_name: Ansible
+            last_name: Smoke Test
+            address_1: Partizanska 1
+            city: Skopje
+            # Required for MK addresses (free text: WooCommerce has no list for MK).
+            state: Skopje
+            postcode: "1000"
+            country: MK
+            email: "smoke-test@{{ verify_domain }}"
+            phone: "070000000"
+          shipping_address:
+            <<: *verify_address
+        validate_certs: false
+        status_code: 200
+      register: verify_order
+      failed_when: verify_order.json.status | default('') not in ['processing', 'on-hold', 'pending']
+
+    - name: Show the result
+      ansible.builtin.debug:
+        msg: >-
+          Order #{{ verify_order.json.order_id }} placed ({{ verify_order.json.status }},
+          {{ verify_order.json.payment_method }}), home page served by
+          {{ verify_home.set_cookie | regex_search('SERVERID=([^;]+)', '\1') | first }}
+
+    - name: Delete the test order again
+      ansible.builtin.command: >-
+        wp wc shop_order delete {{ verify_order.json.order_id }} --force=true --user=admin
+        --path={{ hostvars[groups['wordpress'] | first].wp_docroot }}
+      delegate_to: "{{ groups['wordpress'] | first }}"
+      become: true
+      become_user: www-data
+      changed_when: false

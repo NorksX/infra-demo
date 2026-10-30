@@ -1,0 +1,19 @@
+---
+# Sets haproxy_web_up: names of web servers HAProxy currently reports UP
+# (as seen by the first load balancer).
+- name: Read backend status from HAProxy
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo 'show stat' | socat stdio {{ haproxy_config_socket | default('/run/haproxy/admin.sock') }} | grep '^wordpress,'
+  args:
+    executable: /bin/bash
+  register: haproxy_web_stat
+  changed_when: false
+  delegate_to: "{{ groups['loadbalancers'] | first }}"
+
+- name: List the web servers that are UP
+  ansible.builtin.set_fact:
+    haproxy_web_up: >-
+      {{ haproxy_web_stat.stdout_lines | map('split', ',')
+         | selectattr('17', 'equalto', 'UP') | map(attribute='1')
+         | reject('in', ['BACKEND', 'FRONTEND']) | list }}

@@ -82,6 +82,30 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 192.168.56.10  shop.local             # production (VIP)
 ```
 
+## Оркестрација и deployment стратегија
+
+| Playbook | Стратегија |
+|---|---|
+| `site.yml` | редослед: bootstrap → common/hardening → база → NFS → Redis → **HAProxy → web** → verify (LB е пред web бидејќи WordPress ги користи MariaDB и Redis преку HAProxy) |
+| `webservers.yml` | `serial: 50%` + `max_fail_percentage: 0` — ако една половина падне, извршувањето застанува, а другата половина продолжува да служи. Reload на Nginx/PHP-FPM е без прекин. |
+| `rolling_update.yml` | `serial: 1` за нова верзија на WordPress/WooCommerce: проверка дека други нодови се UP → **drain на секој LB** (`delegate_to`) и чекање да завршат конекциите → ажурирање → враќање во ротација дури кога HAProxy health check-от го пријави нодот UP |
+| `galera_rolling_restart.yml` | рестарт на Galera нодовите еден по еден, со чекање на `Synced` |
+| `verify.yml` | end-to-end тест од контролниот нод преку VIP: HTTP→HTTPS, sticky cookie, продавница, **вистинска нарачка** преку WooCommerce Store API (потоа се брише) |
+
+Други `delegate_to` / `run_once`: креирање на базата/корисниците (db1), инсталација на WordPress и
+поставки на продавницата (wp1), генерирање на TLS сертификатот (haproxy1), приклучување на Galera нодови.
+
+```bash
+# Нова верзија: прво во staging, па во production
+# 1. inventories/<env>/group_vars/all/main.yml: wordpress_version / woocommerce_version
+# 2.
+ansible-playbook playbooks/rolling_update.yml \
+  -i inventories/shared/hosts.yml -i inventories/staging/hosts.yml --vault-id staging@.vault_pass_staging
+```
+
+Тестирано на staging: 7.1.4 → 7.1.3 → 7.1.4 додека скрипта праќаше барања (~5/s) преку HAProxy:
+97/97 и 112/112 одговори 200, нула грешки.
+
 ## Load balancer (HAProxy)
 
 `haproxy-config` го генерира `haproxy.cfg` од инвентарот (секој нов хост во групата автоматски станува backend):

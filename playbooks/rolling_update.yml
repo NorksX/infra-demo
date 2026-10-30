@@ -1,0 +1,66 @@
+---
+# Zero-downtime update of the web tier, one node at a time, e.g. a new
+# WordPress/WooCommerce version tested in staging:
+#
+#   1. set wordpress_version / woocommerce_version in inventories/<env>/group_vars/all/main.yml
+#   2. ansible-playbook playbooks/rolling_update.yml \
+#        -i inventories/shared/hosts.yml -i inventories/<env>/hosts.yml --vault-id <env>@.vault_pass_<env>
+#
+# For each node: check that others are serving, drain it on every load
+# balancer, update it, and put it back only when HAProxy sees it healthy. A
+# failure stops the run with the remaining nodes untouched and in rotation.
+- name: Rolling update of the web tier
+  hosts: wordpress
+  serial: 1
+  max_fail_percentage: 0
+  pre_tasks:
+    - name: Check HAProxy's view of the web tier
+      ansible.builtin.include_tasks: tasks/haproxy_backend_status.yml
+
+    - name: Other nodes must be serving before this one leaves
+      ansible.builtin.assert:
+        that: haproxy_web_up | difference([inventory_hostname]) | length > 0
+        fail_msg: "Refusing to drain {{ inventory_hostname }}: no other web node is UP ({{ haproxy_web_up }})"
+        quiet: true
+
+    - name: Drain the node on every load balancer and wait for its connections to finish
+      community.general.haproxy:
+        state: disabled
+        drain: true
+        backend: wordpress
+        host: "{{ inventory_hostname }}"
+        socket: /run/haproxy/admin.sock
+        wait_interval: 2
+        wait_retries: 30
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['loadbalancers'] }}"
+
+  roles:
+    - role: wordpress-setup
+
+  post_tasks:
+    - name: Put the node back into rotation
+      community.general.haproxy:
+        state: enabled
+        backend: wordpress
+        host: "{{ inventory_hostname }}"
+        socket: /run/haproxy/admin.sock
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['loadbalancers'] }}"
+
+    # Leaving maintenance, a server only counts as UP after `rise` passing
+    # health checks; the next node must not be drained before that.
+    - name: Wait until every load balancer's health checks report the node UP
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo 'show stat' | socat stdio /run/haproxy/admin.sock \
+          | awk -F, '$1 == "wordpress" && $2 == "{{ inventory_hostname }}" { print $18 }'
+      args:
+        executable: /bin/bash
+      register: rolling_update_node_status
+      until: rolling_update_node_status.stdout == 'UP'
+      retries: 30
+      delay: 2
+      changed_when: false
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['loadbalancers'] }}"
