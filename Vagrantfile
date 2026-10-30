@@ -14,6 +14,9 @@
 require 'yaml'
 
 environment    = ENV['ENV'] || 'production'
+# Multiplies every vb_memory from the inventory, e.g. VM_MEMORY_SCALE=1.5 on a
+# bigger host. The inventory sizes fit a 16 GB laptop.
+memory_scale   = (ENV['VM_MEMORY_SCALE'] || '1').to_f
 root           = File.dirname(__FILE__)
 inventory_file = File.join(root, 'inventories', environment, 'hosts.yml')
 raise "Inventory not found: #{inventory_file} (ENV=production|staging)" unless File.exist?(inventory_file)
@@ -32,7 +35,7 @@ servers = []
   (group['hosts'] || {}).each do |name, vars|
     vars ||= {}
     servers << { name: name, ip: vars['ansible_host'],
-                 memory: vars['vb_memory'] || 512, cpus: vars['vb_cpus'] || 1 }
+                 memory: ((vars['vb_memory'] || 512) * memory_scale).to_i, cpus: vars['vb_cpus'] || 1 }
   end
 end
 

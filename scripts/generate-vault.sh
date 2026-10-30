@@ -11,6 +11,14 @@ cd "$(dirname "$0")/.."
 PASS_FILE=".vault_pass_${ENV_NAME}"
 VAULT_FILE="inventories/${ENV_NAME}/group_vars/all/vault.yml"
 
+# A committed vault without its password file (e.g. a fresh clone): a new
+# password could never decrypt it, so stop instead of creating one.
+if [[ ! -f "$PASS_FILE" && -f "$VAULT_FILE" ]]; then
+  echo "ERROR: $VAULT_FILE exists but $PASS_FILE is missing." >&2
+  echo "Copy $PASS_FILE from the machine that created the vault, or delete the vault to start fresh." >&2
+  exit 1
+fi
+
 if [[ ! -f "$PASS_FILE" ]]; then
   python3 -c 'import secrets; print(secrets.token_urlsafe(32))' > "$PASS_FILE"
   chmod 600 "$PASS_FILE"

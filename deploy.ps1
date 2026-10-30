@@ -3,6 +3,7 @@
 #
 #   .\deploy.ps1 -Environment staging
 #   .\deploy.ps1 -Environment production -AnsibleArgs '--tags','haproxy'
+#   $env:VM_MEMORY_SCALE = "1.5"; .\deploy.ps1   # bigger VMs on a bigger host
 param(
     [ValidateSet('production', 'staging')]
     [string]$Environment = 'production',
