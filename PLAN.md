@@ -1,5 +1,41 @@
 # Implementation Plan — WordPress + WooCommerce Hosting Platform (Ansible)
 
+## ▶ CURRENT STATUS (keep this section up to date — read first when resuming)
+
+**Last updated:** 2026-10-30 04:10
+
+All tiers are implemented and committed; everything below "Done" was tested on **staging**.
+
+**Done (committed):** skeleton/inventories/vault · common + security-hardening · database
+(geerlingguy.mysql + galera-cluster) · NFS + Redis · haproxy-config (+keepalived) · web tier
+(geerlingguy.php/nginx + wordpress-setup) · orchestration (serial, rolling_update.yml, verify.yml) ·
+docs (README in Macedonian, docs/architecture.md, role READMEs) · VM_MEMORY_SCALE.
+
+**Remaining, in order:**
+1. ⏳ Fresh **production** deploy with `.\deploy.ps1 -Environment production` (started 03:5x,
+   log: scratchpad `prod-deploy.log`). Production-only code, never run before: keepalived VIP,
+   Redis replica (cache2), haproxy2. Fix bugs → commit each fix separately.
+2. Production failover tests (VIP failover, wp2 down + sticky redispatch, db1 down, Redis primary
+   down, NFS wp1→wp3). Re-run `site.yml` → must be `changed=0`.
+3. Real upgrade in production: set production `wordpress_version: 7.1.4`,
+   `woocommerce_version: 11.2.1`, run `playbooks/rolling_update.yml` under traffic, commit
+   ("Promote WordPress 7.1.4 / WooCommerce 11.2.1 to production").
+4. `vagrant destroy -f` production, then fresh `.\deploy.ps1 -Environment staging` (one command
+   from zero; staging was only built incrementally so far).
+5. Fill `<!--RESULT-FRESH-->` / `<!--RESULT-PROD-->` placeholders in README.md with real results; commit.
+
+**How to run things (control node = WSL):** `wsl -e bash -c "cd /mnt/c/Users/Boro/Desktop/infra && ./deploy.sh staging"`.
+Use script files for anything with quotes (PowerShell mangles them). Only one environment fits in RAM.
+SSH to a VM: `ssh -i files/deploy_key deploy@<ip>`. Vault passwords: `.vault_pass_<env>` (gitignored).
+
+**Gotchas already solved (don't re-investigate):** world-writable /mnt/c → wsl.conf metadata ·
+Vagrant net-ssh needs ecdh-sha2-nistp256 KEX · rsyslog AppArmor blocks HAProxy chroot socket → UDP 127.0.0.1:514 ·
+fail2ban log file must be owned by syslog · Jinja `'\t'` isn't a tab · ansible-core 2.19+ needs boolean
+conditionals · community.mysql → ansible.mysql · MK addresses need `state` in WooCommerce ·
+haproxy module `wait` doesn't wait for health checks → explicit poll.
+
+---
+
 Project 2, Option A: HAProxy (L7, sticky sessions, health checks) → 4× Nginx + PHP-FPM WordPress/WooCommerce
 → Redis (object cache + PHP sessions) → MariaDB Galera 3-node multi-master. Two environments: `production`, `staging`.
 Goal: **one command** takes clean Ubuntu VMs to a working shop, and re-running it changes nothing.
