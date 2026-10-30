@@ -4,7 +4,7 @@ redis_bind_interface: "127.0.0.1 {{ ansible_host }}"
 redis_requirepass: "{{ redis_password }}"
 # Object cache + PHP sessions; a replica set in host_vars (redis_replica_of)
 # follows its primary. Replicas authenticate with the same password.
-redis_maxmemory: 192mb
+redis_maxmemory: 128mb
 redis_maxmemory_policy: allkeys-lru
 redis_disabled_commands: [DEBUG]
 redis_extra_config: |
