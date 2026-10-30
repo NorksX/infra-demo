@@ -1,0 +1,94 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure WordPress + WooCommerce on a web node
+    options:
+      wordpress_setup_docroot:
+        type: path
+      wordpress_setup_version:
+        type: str
+        required: true
+        description: WordPress core version; changing it replaces core files (rolling update).
+      wordpress_setup_locale:
+        type: str
+      wordpress_setup_wp_cli_version:
+        type: str
+      wordpress_setup_wp_cli_url:
+        type: str
+      wordpress_setup_plugins:
+        type: list
+        elements: dict
+        description: Plugins as {name, version}; files on every node, activated once.
+      wordpress_setup_remove_plugins:
+        type: list
+        elements: str
+        description: Plugin directories/files under wp-content/plugins to delete.
+      wordpress_setup_primary_node:
+        type: str
+        description: Node that runs database work and the WordPress cron.
+      wordpress_setup_site_url:
+        type: str
+      wordpress_setup_site_title:
+        type: str
+      wordpress_setup_environment:
+        type: str
+      wordpress_setup_admin_user:
+        type: str
+      wordpress_setup_admin_password:
+        type: str
+        required: true
+        no_log: true
+      wordpress_setup_admin_email:
+        type: str
+      wordpress_setup_db_host:
+        type: str
+      wordpress_setup_db_name:
+        type: str
+      wordpress_setup_db_user:
+        type: str
+      wordpress_setup_db_password:
+        type: str
+        required: true
+        no_log: true
+      wordpress_setup_table_prefix:
+        type: str
+      wordpress_setup_salts:
+        type: dict
+        required: true
+        no_log: true
+      wordpress_setup_redis_host:
+        type: str
+      wordpress_setup_redis_port:
+        type: int
+      wordpress_setup_redis_password:
+        type: str
+        required: true
+        no_log: true
+      wordpress_setup_redis_cache_db:
+        type: int
+      wordpress_setup_redis_session_db:
+        type: int
+      wordpress_setup_php_version:
+        type: str
+      wordpress_setup_fpm_socket:
+        type: path
+      wordpress_setup_fpm_max_children:
+        type: int
+      wordpress_setup_fpm_start_servers:
+        type: int
+      wordpress_setup_fpm_min_spare:
+        type: int
+      wordpress_setup_fpm_max_spare:
+        type: int
+      wordpress_setup_fpm_max_requests:
+        type: int
+      wordpress_setup_server_name:
+        type: str
+      wordpress_setup_trusted_proxies:
+        type: list
+        elements: str
+      wordpress_setup_store:
+        type: dict
+      wordpress_setup_sample_products:
+        type: list
+        elements: dict

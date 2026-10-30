@@ -1,0 +1,28 @@
+---
+- name: Install the store setup script
+  ansible.builtin.template:
+    src: store-setup.php.j2
+    dest: /usr/local/share/wordpress-store-setup.php
+    owner: root
+    group: www-data
+    mode: "0640"
+
+- name: Configure the store on the primary node
+  run_once: true
+  delegate_to: "{{ wordpress_setup_primary_node }}"
+  become: true
+  become_user: www-data
+  environment:
+    WP_CLI_CACHE_DIR: /var/cache/wp-cli
+  block:
+    - name: Apply store settings, pages, payment method and sample products
+      ansible.builtin.command: >-
+        wp eval-file /usr/local/share/wordpress-store-setup.php --path={{ wordpress_setup_docroot }}
+      register: wordpress_setup_store_result
+      changed_when: "'changed=0' not in wordpress_setup_store_result.stdout"
+
+    # WooCommerce may need a schema migration after a plugin update.
+    - name: Run pending WooCommerce database updates
+      ansible.builtin.command: wp wc update --path={{ wordpress_setup_docroot }}
+      register: wordpress_setup_wc_update
+      changed_when: "'No updates required' not in wordpress_setup_wc_update.stdout"

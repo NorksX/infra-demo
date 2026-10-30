@@ -1,0 +1,10 @@
+---
+- name: Web tier — Nginx + PHP-FPM + WordPress/WooCommerce
+  hosts: wordpress
+  roles:
+    - role: geerlingguy.php
+      tags: [php]
+    - role: geerlingguy.nginx
+      tags: [nginx]
+    - role: wordpress-setup
+      tags: [wordpress]

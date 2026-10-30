@@ -1,0 +1,54 @@
+<?php
+/**
+ * {{ ansible_managed }}
+ * Environment: {{ wordpress_setup_environment }}
+ * All secrets come from Ansible Vault. Do not edit on the server.
+ */
+
+// ** Database (MariaDB Galera through the HAProxy VIP) ** //
+define( 'DB_NAME',     '{{ wordpress_setup_db_name }}' );
+define( 'DB_USER',     '{{ wordpress_setup_db_user }}' );
+define( 'DB_PASSWORD', '{{ wordpress_setup_db_password }}' );
+define( 'DB_HOST',     '{{ wordpress_setup_db_host }}' );
+define( 'DB_CHARSET',  'utf8mb4' );
+define( 'DB_COLLATE',  '' );
+
+$table_prefix = '{{ wordpress_setup_table_prefix }}';
+
+// ** Authentication keys and salts ** //
+{% for key, value in wordpress_setup_salts | dictsort %}
+define( '{{ key }}', '{{ value }}' );
+{% endfor %}
+
+// ** Redis object cache (redis-cache plugin) ** //
+define( 'WP_REDIS_HOST',        '{{ wordpress_setup_redis_host }}' );
+define( 'WP_REDIS_PORT',        {{ wordpress_setup_redis_port }} );
+define( 'WP_REDIS_PASSWORD',    '{{ wordpress_setup_redis_password }}' );
+define( 'WP_REDIS_DATABASE',    {{ wordpress_setup_redis_cache_db }} );
+define( 'WP_REDIS_PREFIX',      'wp-{{ wordpress_setup_environment }}:' );
+define( 'WP_REDIS_TIMEOUT',      1 );
+define( 'WP_REDIS_READ_TIMEOUT', 1 );
+
+// ** Site URL and reverse proxy ** //
+define( 'WP_HOME',    '{{ wordpress_setup_site_url }}' );
+define( 'WP_SITEURL', '{{ wordpress_setup_site_url }}' );
+// TLS ends at HAProxy, which sets X-Forwarded-Proto.
+if ( isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && 'https' === $_SERVER['HTTP_X_FORWARDED_PROTO'] ) {
+	$_SERVER['HTTPS'] = 'on';
+}
+define( 'FORCE_SSL_ADMIN', true );
+
+// ** Operations ** //
+define( 'WP_ENVIRONMENT_TYPE', '{{ 'production' if wordpress_setup_environment == 'production' else 'staging' }}' );
+// wp-cron runs from system cron on {{ wordpress_setup_primary_node }} only.
+define( 'DISABLE_WP_CRON', true );
+// Code is managed by Ansible: no installs, updates or edits from the dashboard.
+define( 'DISALLOW_FILE_MODS', true );
+define( 'DISALLOW_FILE_EDIT', true );
+define( 'AUTOMATIC_UPDATER_DISABLED', true );
+define( 'WP_DEBUG', false );
+
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', __DIR__ . '/' );
+}
+require_once ABSPATH . 'wp-settings.php';

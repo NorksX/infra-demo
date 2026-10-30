@@ -1,4 +1,47 @@
 ---
+# --- geerlingguy.php: PHP 8.3 + the extensions WordPress/WooCommerce need ----
+php_default_version_debian: "8.3"
+php_enable_php_fpm: true
+php_install_recommends: false
+php_webserver_daemon: nginx
+php_packages:
+  - php8.3-cli
+  - php8.3-fpm
+  - php8.3-common
+  - php8.3-opcache
+  - php8.3-mysql
+  - php8.3-redis
+  - php8.3-curl
+  - php8.3-gd
+  - php8.3-imagick
+  - php8.3-intl
+  - php8.3-mbstring
+  - php8.3-xml
+  - php8.3-zip
+  - php8.3-bcmath
+# The pool is rendered by wordpress-setup (it carries the Redis session
+# password, so it must not be world-readable like php.ini).
+php_fpm_pools: []
+# Redis is the object cache; without this the role writes an APCu ini for an
+# extension that isn't installed.
+php_enable_apc: false
+php_memory_limit: 256M
+php_max_execution_time: "60"
+php_upload_max_filesize: 32M
+php_post_max_size: 32M
+php_date_timezone: "{{ timezone }}"
+php_expose_php: "Off"
+php_opcache_memory_consumption: "128"
+php_opcache_max_accelerated_files: "10000"
+
+# --- geerlingguy.nginx: base server; the vhost comes from wordpress-setup ----
+nginx_remove_default_vhost: true
+nginx_server_tokens: "off"
+nginx_client_max_body_size: 32m
+nginx_worker_processes: auto
+nginx_vhosts: []
+
+# --- Firewall ----------------------------------------------------------------
 # Nginx only accepts traffic from the load balancers.
 firewall_rules:
   - { port: 80, from_hosts: "{{ groups['loadbalancers'] }}", comment: HTTP from HAProxy }

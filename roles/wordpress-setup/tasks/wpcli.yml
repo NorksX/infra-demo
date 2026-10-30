@@ -1,0 +1,25 @@
+---
+# Versioned file + symlink: changing wordpress_setup_wp_cli_version installs the
+# new release next to the old one and switches atomically.
+- name: Download wp-cli (checksum verified)
+  ansible.builtin.get_url:
+    url: "{{ wordpress_setup_wp_cli_url }}"
+    checksum: "sha512:{{ wordpress_setup_wp_cli_url }}.sha512"
+    dest: "/usr/local/lib/wp-cli-{{ wordpress_setup_wp_cli_version }}.phar"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Point /usr/local/bin/wp at this version
+  ansible.builtin.file:
+    src: "/usr/local/lib/wp-cli-{{ wordpress_setup_wp_cli_version }}.phar"
+    dest: /usr/local/bin/wp
+    state: link
+
+- name: Cache directory for wp-cli runs as www-data
+  ansible.builtin.file:
+    path: /var/cache/wp-cli
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0750"

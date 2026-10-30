@@ -1,0 +1,24 @@
+---
+# Each reload is preceded by a config test, so a bad template fails the run
+# instead of taking the service down.
+- name: Test php-fpm config
+  ansible.builtin.command: "php-fpm{{ wordpress_setup_php_version }} -t"
+  changed_when: false
+  listen: Reload php-fpm
+
+- name: Reload php-fpm service
+  ansible.builtin.systemd_service:
+    name: "php{{ wordpress_setup_php_version }}-fpm"
+    state: reloaded
+  listen: Reload php-fpm
+
+- name: Test nginx config
+  ansible.builtin.command: nginx -t
+  changed_when: false
+  listen: Reload nginx
+
+- name: Reload nginx service
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: reloaded
+  listen: Reload nginx

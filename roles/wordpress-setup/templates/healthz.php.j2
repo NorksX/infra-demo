@@ -1,0 +1,29 @@
+<?php
+/**
+ * {{ ansible_managed }}
+ * Health check for HAProxy: 200 when PHP-FPM works and the database answers.
+ * Redis is reported but not required: WordPress keeps working without the
+ * object cache, so a Redis outage must not take every web node out.
+ */
+header( 'Content-Type: text/plain' );
+header( 'Cache-Control: no-store' );
+
+list( $host, $port ) = array_pad( explode( ':', '{{ wordpress_setup_db_host }}' ), 2, 3306 );
+mysqli_report( MYSQLI_REPORT_OFF );
+$db = mysqli_init();
+$db->options( MYSQLI_OPT_CONNECT_TIMEOUT, 2 );
+$db_ok = @$db->real_connect( $host, '{{ wordpress_setup_db_user }}', '{{ wordpress_setup_db_password }}', '{{ wordpress_setup_db_name }}', (int) $port )
+	&& $db->query( 'SELECT 1' );
+
+$redis_ok = false;
+try {
+	$redis = new Redis();
+	$redis_ok = $redis->connect( '{{ wordpress_setup_redis_host }}', {{ wordpress_setup_redis_port }}, 1 )
+		&& $redis->auth( '{{ wordpress_setup_redis_password }}' )
+		&& $redis->ping();
+} catch ( Throwable $e ) {
+	$redis_ok = false;
+}
+
+http_response_code( $db_ok ? 200 : 503 );
+printf( "node=%s db=%s redis=%s\n", gethostname(), $db_ok ? 'ok' : 'FAIL', $redis_ok ? 'ok' : 'degraded' );

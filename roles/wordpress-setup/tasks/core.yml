@@ -1,0 +1,38 @@
+---
+# Code belongs to root and is read-only for PHP (www-data); only the NFS
+# uploads directory is writable by the web server.
+- name: Document root
+  ansible.builtin.file:
+    path: "{{ wordpress_setup_docroot }}"
+    state: directory
+    owner: root
+    group: www-data
+    mode: "0755"
+
+- name: Read the installed core version
+  ansible.builtin.command: wp core version --allow-root --path={{ wordpress_setup_docroot }}
+  register: wordpress_setup_core_version
+  changed_when: false
+  failed_when: false
+
+# Fresh node: full download. Version change: replace core files only and keep
+# wp-content (themes, plugins, uploads mount).
+- name: Download WordPress {{ wordpress_setup_version }}
+  ansible.builtin.command: >-
+    wp core download --allow-root
+    --path={{ wordpress_setup_docroot }}
+    --version={{ wordpress_setup_version }}
+    --locale={{ wordpress_setup_locale }}
+    {{ '--skip-content --force' if wordpress_setup_core_version.rc == 0 else '' }}
+  when: wordpress_setup_core_version.rc != 0 or wordpress_setup_core_version.stdout != wordpress_setup_version
+  changed_when: true
+  notify: Reload php-fpm
+
+- name: Keep wp-content owned by root, readable by PHP
+  ansible.builtin.file:
+    path: "{{ wordpress_setup_docroot }}/{{ item }}"
+    state: directory
+    owner: root
+    group: www-data
+    mode: "0755"
+  loop: [wp-content, wp-content/plugins, wp-content/themes]

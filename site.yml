@@ -19,3 +19,6 @@
 
 - name: Load balancer tier
   ansible.builtin.import_playbook: playbooks/loadbalancers.yml
+
+- name: Web tier
+  ansible.builtin.import_playbook: playbooks/webservers.yml

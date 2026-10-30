@@ -1,0 +1,35 @@
+---
+# The database is shared, so this runs once, on the primary node, as www-data
+# (anything it writes into uploads must belong to the web server).
+- name: Install and upgrade the site on the primary node
+  run_once: true
+  delegate_to: "{{ wordpress_setup_primary_node }}"
+  become: true
+  become_user: www-data
+  environment:
+    WP_CLI_CACHE_DIR: /var/cache/wp-cli
+  block:
+    - name: Check whether WordPress is installed
+      ansible.builtin.command: wp core is-installed --path={{ wordpress_setup_docroot }}
+      register: wordpress_setup_installed
+      changed_when: false
+      failed_when: wordpress_setup_installed.rc not in [0, 1]
+
+    - name: Install WordPress
+      ansible.builtin.command: >-
+        wp core install --path={{ wordpress_setup_docroot }}
+        --url={{ wordpress_setup_site_url }}
+        --title={{ wordpress_setup_site_title | quote }}
+        --admin_user={{ wordpress_setup_admin_user }}
+        --admin_password={{ wordpress_setup_admin_password | quote }}
+        --admin_email={{ wordpress_setup_admin_email }}
+        --skip-email
+      when: wordpress_setup_installed.rc == 1
+      changed_when: true
+      no_log: true
+
+    # After a core version change (rolling update) the schema may need upgrading.
+    - name: Upgrade the database schema if needed
+      ansible.builtin.command: wp core update-db --path={{ wordpress_setup_docroot }}
+      register: wordpress_setup_update_db
+      changed_when: wordpress_setup_update_db.stdout is not search('already at (the )?latest')

@@ -1,0 +1,74 @@
+---
+# --- Code --------------------------------------------------------------------
+wordpress_setup_docroot: "{{ wp_docroot | default('/var/www/wordpress') }}"
+wordpress_setup_version: "{{ wordpress_version }}"
+wordpress_setup_locale: en_US
+wordpress_setup_wp_cli_version: "2.12.0"
+wordpress_setup_wp_cli_url: >-
+  https://github.com/wp-cli/wp-cli/releases/download/v{{ wordpress_setup_wp_cli_version
+  }}/wp-cli-{{ wordpress_setup_wp_cli_version }}.phar
+wordpress_setup_plugins:
+  - name: woocommerce
+    version: "{{ woocommerce_version }}"
+  - name: redis-cache
+    version: "3.0.0"
+# Bundled with core but unused: removed from every node (less attack surface).
+wordpress_setup_remove_plugins:
+  - akismet
+  - hello.php
+
+# The node that runs one-off database work (install, activation, store setup)
+# and the WordPress cron. Code is installed on every node.
+wordpress_setup_primary_node: "{{ groups['wordpress'] | first }}"
+
+# --- Site --------------------------------------------------------------------
+wordpress_setup_site_url: "{{ site_url }}"
+wordpress_setup_site_title: Shop
+wordpress_setup_environment: "{{ env_name | default('production') }}"
+wordpress_setup_admin_user: admin
+wordpress_setup_admin_password: "{{ wp_admin_password }}"
+wordpress_setup_admin_email: "admin@{{ domain }}"
+
+# --- Database (through the HAProxy VIP) --------------------------------------
+wordpress_setup_db_host: "{{ lb_vip }}:{{ mysql_port | default(3306) }}"
+wordpress_setup_db_name: "{{ wp_db_name }}"
+wordpress_setup_db_user: "{{ wp_db_user }}"
+wordpress_setup_db_password: "{{ wp_db_password }}"
+wordpress_setup_table_prefix: wp_
+wordpress_setup_salts: "{{ wp_salts }}"
+
+# --- Redis (through the HAProxy VIP): DB 0 object cache, DB 1 PHP sessions ---
+wordpress_setup_redis_host: "{{ lb_vip }}"
+wordpress_setup_redis_port: "{{ redis_port | default(6379) }}"
+wordpress_setup_redis_password: "{{ redis_password }}"
+wordpress_setup_redis_cache_db: 0
+wordpress_setup_redis_session_db: 1
+
+# --- PHP-FPM pool ------------------------------------------------------------
+wordpress_setup_php_version: "8.3"
+wordpress_setup_fpm_socket: "/run/php/php{{ wordpress_setup_php_version }}-fpm-wordpress.sock"
+wordpress_setup_fpm_max_children: 8
+wordpress_setup_fpm_start_servers: 2
+wordpress_setup_fpm_min_spare: 2
+wordpress_setup_fpm_max_spare: 4
+wordpress_setup_fpm_max_requests: 500
+
+# --- Nginx -------------------------------------------------------------------
+wordpress_setup_server_name: "{{ domain }}"
+# Only these addresses may set the client IP through X-Forwarded-For.
+wordpress_setup_trusted_proxies: >-
+  {{ groups['loadbalancers'] | map('extract', hostvars, 'ansible_host') | list + [lb_vip] }}
+
+# --- WooCommerce store -------------------------------------------------------
+wordpress_setup_store:
+  currency: "{{ store_currency | default('EUR') }}"
+  country: MK
+  city: Skopje
+  address: Partizanska 1
+  postcode: "1000"
+wordpress_setup_sample_products:
+  - { sku: MUG-001, name: Coffee mug, price: "9.90", description: Ceramic mug, 350 ml. }
+  - { sku: TSHIRT-001, name: T-shirt, price: "19.00", description: Cotton t-shirt with logo. }
+  - { sku: CAP-001, name: Baseball cap, price: "14.50", description: Adjustable cap. }
+  - { sku: BAG-001, name: Tote bag, price: "12.00", description: Canvas shopping bag. }
+  - { sku: BOOK-001, name: Ansible notebook, price: "7.50", description: A5 notebook, 120 pages. }

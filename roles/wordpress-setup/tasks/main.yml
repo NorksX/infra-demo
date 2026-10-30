@@ -1,0 +1,53 @@
+---
+# Order matters: plugin files can only be installed once the database is
+# installed (wp-cli loads WordPress for that), and the primary node runs all
+# one-off database work while every node gets the same code and config.
+
+- name: Install wp-cli
+  ansible.builtin.include_tasks: wpcli.yml
+  tags: [wordpress, wpcli]
+
+- name: WordPress core files
+  ansible.builtin.include_tasks: core.yml
+  tags: [wordpress, core]
+
+- name: Configuration (wp-config, PHP-FPM pool, Nginx vhost)
+  ansible.builtin.include_tasks: config.yml
+  tags: [wordpress, config]
+
+- name: Install the site in the database (primary node)
+  ansible.builtin.include_tasks: install.yml
+  tags: [wordpress, install]
+
+- name: Plugins (WooCommerce, Redis object cache)
+  ansible.builtin.include_tasks: plugins.yml
+  tags: [wordpress, plugins]
+
+- name: WooCommerce store (primary node)
+  ansible.builtin.include_tasks: store.yml
+  tags: [wordpress, store]
+
+- name: System cron for wp-cron (primary node only)
+  ansible.builtin.cron:
+    name: wordpress-cron
+    cron_file: wordpress
+    user: www-data
+    minute: "*/5"
+    job: "/usr/local/bin/wp cron event run --due-now --path={{ wordpress_setup_docroot }} --quiet"
+    state: "{{ 'present' if inventory_hostname == wordpress_setup_primary_node else 'absent' }}"
+  tags: [wordpress, cron]
+
+- name: Apply pending reloads before the health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Health check answers 200
+  ansible.builtin.uri:
+    url: http://127.0.0.1/healthz
+    headers:
+      Host: "{{ wordpress_setup_server_name }}"
+    status_code: 200
+  register: wordpress_setup_health
+  retries: 5
+  delay: 3
+  until: wordpress_setup_health.status == 200
+  tags: [wordpress, verify]

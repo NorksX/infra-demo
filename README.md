@@ -56,8 +56,31 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 | `common` | hostname, `/etc/hosts` од инвентарот, chrony, timezone, основни пакети, `deploy` корисник |
 | `security-hardening` | UFW (правила по слој од `firewall_rules`), SSH зацврстување (`sshd -t` валидација), fail2ban, sysctl, автоматски безбедносни ажурирања |
 | `galera-cluster` | Galera конфигурација (`60-galera.cnf`), безбеден bootstrap/опоравок, rolling restart, HTTP health check (порта 9200) за HAProxy |
+| `wordpress-setup` | wp-cli (проверен checksum), WordPress core + WooCommerce + Redis Object Cache, `wp-config.php` од vault, PHP-FPM pool, Nginx vhost, `/healthz`, WooCommerce продавница (EUR, страници, наплата при испорака, примерни производи), cron само на еден нод |
 | `nfs-server` | NFSv4 export за `wp-content/uploads`, дозволен само за WordPress нодовите (`root_squash`) |
 | `nfs-client` | Монтирање на споделените uploads на секој WordPress нод (трајно во fstab) |
+
+## WordPress + WooCommerce
+
+`geerlingguy.php` (PHP 8.3 + модули) и `geerlingguy.nginx` ги инсталираат сервисите;
+`wordpress-setup` ги конфигурира за WordPress:
+
+- **Код** (`/var/www/wordpress`) е во сопственост на root и само за читање за PHP; единствено
+  `wp-content/uploads` (NFS) е запишлив за `www-data`. `DISALLOW_FILE_MODS` — кодот го менува само Ansible.
+- **Верзии** се фиксни во `group_vars` (`wordpress_version`, `woocommerce_version`); промена на верзијата
+  ги заменува само core датотеките и ја надградува базата (`wp core update-db`, `wp wc update`).
+- **Еднократни операции** (инсталација, активирање plugin-и, поставки на продавницата) се извршуваат
+  само на `wp1` (`run_once` + `delegate_to`), бидејќи базата е заедничка.
+- **Тајни** (DB, Redis, salts) се само во `wp-config.php` и PHP-FPM pool-от (mode `0640`), никогаш во `php.ini`.
+- **Redis**: DB 0 = object cache (`object-cache.php` drop-in), DB 1 = PHP сесии — двете преку HAProxy.
+- `/healthz` враќа 200 кога PHP-FPM и базата работат; Redis е само „degraded“, не го вади нодот од ротација.
+
+Адреса во прелистувач (додајте во `C:\Windows\System32\drivers\etc\hosts`):
+
+```
+192.168.57.11  staging.shop.local     # staging
+192.168.56.10  shop.local             # production (VIP)
+```
 
 ## Load balancer (HAProxy)
 

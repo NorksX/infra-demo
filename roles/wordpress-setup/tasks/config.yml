@@ -1,0 +1,45 @@
+---
+- name: Render wp-config.php
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: "{{ wordpress_setup_docroot }}/wp-config.php"
+    owner: root
+    group: www-data
+    mode: "0640"   # DB and Redis credentials
+  no_log: true
+  notify: Reload php-fpm
+
+- name: Install the health check endpoint
+  ansible.builtin.template:
+    src: healthz.php.j2
+    dest: "{{ wordpress_setup_docroot }}/healthz.php"
+    owner: root
+    group: www-data
+    mode: "0640"
+  no_log: true
+
+- name: Render the PHP-FPM pool
+  ansible.builtin.template:
+    src: php-fpm-pool.conf.j2
+    dest: "/etc/php/{{ wordpress_setup_php_version }}/fpm/pool.d/wordpress.conf"
+    owner: root
+    group: root
+    mode: "0640"   # Redis password for sessions
+  no_log: true
+  notify: Reload php-fpm
+
+# Replaced by the dedicated pool above.
+- name: Remove the default www pool
+  ansible.builtin.file:
+    path: "/etc/php/{{ wordpress_setup_php_version }}/fpm/pool.d/www.conf"
+    state: absent
+  notify: Reload php-fpm
+
+- name: Render the Nginx vhost
+  ansible.builtin.template:
+    src: nginx-wordpress.conf.j2
+    dest: /etc/nginx/conf.d/wordpress.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload nginx
