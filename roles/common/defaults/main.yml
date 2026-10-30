@@ -1,0 +1,30 @@
+---
+common_timezone: "{{ timezone | default('Etc/UTC') }}"
+
+common_packages:
+  - acl            # lets become_user work with unprivileged users
+  - ca-certificates
+  - chrony
+  - curl
+  - htop
+  - jq
+  - python3-apt
+  - unzip
+  - vim-tiny
+
+# Time sync matters: Galera and TLS both misbehave with clock drift.
+common_ntp_servers:
+  - 0.europe.pool.ntp.org
+  - 1.europe.pool.ntp.org
+  - 2.europe.pool.ntp.org
+
+# Account Ansible connects as. The Vagrantfile pre-creates it so the first run
+# can log in; this role then owns it (key, sudo rights) from here on.
+common_deploy_user: "{{ deploy_user | default('deploy') }}"
+common_deploy_pubkey: "{{ lookup('ansible.builtin.file', ansible_config_file | dirname ~ '/files/deploy_key.pub') }}"
+
+# Extra /etc/hosts entries: the public site name points at the load balancer VIP,
+# so WordPress loopback requests (wp-cron, Site Health) go through HAProxy.
+common_hosts_extra:
+  - ip: "{{ lb_vip }}"
+    names: ["{{ domain }}"]

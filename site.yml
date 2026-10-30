@@ -4,3 +4,6 @@
 
 - name: Bootstrap
   ansible.builtin.import_playbook: playbooks/bootstrap.yml
+
+- name: Base OS and hardening
+  ansible.builtin.import_playbook: playbooks/common.yml

@@ -1,0 +1,41 @@
+---
+# Must come before enabling the firewall, or we cut off our own session.
+- name: Allow SSH
+  community.general.ufw:
+    rule: allow
+    port: "{{ security_hardening_ssh_port | string }}"
+    proto: tcp
+    from_ip: "{{ security_hardening_firewall_ssh_from }}"
+    comment: SSH
+
+- name: Allow tier rules from inventory hosts
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.0.port | string if item.0.port is defined else omit }}"
+    proto: "{{ item.0.proto | default('tcp') if item.0.port is defined else 'any' }}"
+    from_ip: "{{ hostvars[item.1].ansible_host }}"
+    comment: "{{ item.0.comment | default(omit) }}"
+  loop: "{{ security_hardening_firewall_rules | subelements('from_hosts', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.comment | default('rule') }} from {{ item.1 }}"
+
+- name: Allow tier rules from addresses
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string if item.port is defined else omit }}"
+    proto: "{{ item.proto | default('tcp') if item.port is defined else 'any' }}"
+    from_ip: "{{ item.from | default('any') }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ security_hardening_firewall_rules | rejectattr('from_hosts', 'defined') }}"
+  loop_control:
+    label: "{{ item.comment | default('rule') }} from {{ item.from | default('any') }}"
+
+- name: Set UFW logging
+  community.general.ufw:
+    logging: "{{ security_hardening_firewall_logging }}"
+
+- name: Enable UFW with default deny for incoming traffic
+  community.general.ufw:
+    state: enabled
+    direction: incoming
+    policy: deny

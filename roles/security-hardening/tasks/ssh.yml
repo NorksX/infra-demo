@@ -1,0 +1,12 @@
+---
+# The drop-in is read before the distro defaults in sshd_config (first value
+# wins), so it overrides them without editing the packaged file.
+- name: Install the sshd hardening drop-in
+  ansible.builtin.template:
+    src: sshd-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart ssh

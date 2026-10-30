@@ -1,0 +1,42 @@
+---
+- name: Render custom filters
+  ansible.builtin.template:
+    src: filter.conf.j2
+    dest: "/etc/fail2ban/filter.d/{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ security_hardening_fail2ban_jails }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Restart fail2ban
+
+# fail2ban refuses to start if a jail's log file is missing, and the service
+# that writes it may be installed later in the run.
+- name: Make sure jail log files exist
+  ansible.builtin.file:
+    path: "{{ item.logpath }}"
+    state: touch
+    owner: root
+    group: adm
+    mode: "0640"
+    modification_time: preserve
+    access_time: preserve
+  loop: "{{ security_hardening_fail2ban_jails }}"
+  loop_control:
+    label: "{{ item.logpath }}"
+
+- name: Configure jails
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Ensure fail2ban is running
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    state: started
+    enabled: true

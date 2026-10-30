@@ -10,7 +10,14 @@
     - name: Gather facts
       ansible.builtin.setup:
 
+    # Freshly booted VMs start apt-daily jobs that hold the dpkg lock.
+    - name: Wait for boot-time apt jobs to finish
+      ansible.builtin.command:
+        cmd: systemd-run --wait --quiet --property=After=apt-daily.service --property=After=apt-daily-upgrade.service /bin/true
+      changed_when: false
+
     - name: Refresh the apt cache
       ansible.builtin.apt:
         update_cache: true
         cache_valid_time: 3600
+        lock_timeout: 300

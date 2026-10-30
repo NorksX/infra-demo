@@ -1,0 +1,79 @@
+---
+security_hardening_packages:
+  - ufw
+  - fail2ban
+  - python3-systemd   # lets the sshd jail read the journal
+  - unattended-upgrades
+
+# --- SSH ---------------------------------------------------------------------
+security_hardening_ssh_port: 22
+# `vagrant` stays allowed so `vagrant ssh` keeps working as a lab backdoor.
+security_hardening_ssh_allow_users:
+  - "{{ deploy_user | default('deploy') }}"
+  - vagrant
+security_hardening_ssh_permit_root_login: "no"
+security_hardening_ssh_password_authentication: false
+security_hardening_ssh_max_auth_tries: 3
+security_hardening_ssh_login_grace_time: 30
+security_hardening_ssh_client_alive_interval: 300
+security_hardening_ssh_client_alive_count_max: 2
+# Algorithms supported by OpenSSH 9.6 (Ubuntu 24.04) without legacy options.
+security_hardening_ssh_kex:
+  - sntrup761x25519-sha512@openssh.com
+  - curve25519-sha256
+  - curve25519-sha256@libssh.org
+  - diffie-hellman-group16-sha512
+security_hardening_ssh_ciphers:
+  - chacha20-poly1305@openssh.com
+  - aes256-gcm@openssh.com
+  - aes128-gcm@openssh.com
+  - aes256-ctr
+security_hardening_ssh_macs:
+  - hmac-sha2-512-etm@openssh.com
+  - hmac-sha2-256-etm@openssh.com
+  - umac-128-etm@openssh.com
+
+# --- Firewall (UFW) ----------------------------------------------------------
+security_hardening_firewall_enabled: true
+security_hardening_firewall_ssh_from: "{{ firewall_ssh_from | default('any') }}"
+# Per-tier rules come from group_vars `firewall_rules`. Each rule is a dict:
+#   port:       port number (omit to allow all traffic from the source)
+#   proto:      tcp (default) | udp
+#   from:       CIDR/IP/any (default any)
+#   from_hosts: list of inventory hostnames, resolved to their ansible_host IP
+#   comment:    shown in `ufw status`
+security_hardening_firewall_rules: "{{ firewall_rules | default([]) }}"
+security_hardening_firewall_logging: low
+
+# --- fail2ban ----------------------------------------------------------------
+security_hardening_fail2ban_enabled: true
+security_hardening_fail2ban_bantime: 1h
+security_hardening_fail2ban_findtime: 10m
+security_hardening_fail2ban_maxretry: 5
+security_hardening_fail2ban_banaction: ufw
+security_hardening_fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - "::1"
+# Extra jails from group_vars `fail2ban_jails`. Each jail is a dict:
+#   name, logpath, port, failregex (rendered into filter.d/<name>.conf),
+#   optional maxretry / findtime / bantime.
+security_hardening_fail2ban_jails: "{{ fail2ban_jails | default([]) }}"
+
+# --- Kernel ------------------------------------------------------------------
+security_hardening_sysctl:
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  net.ipv4.tcp_syncookies: 1
+  net.ipv6.conf.all.accept_redirects: 0
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  fs.protected_hardlinks: 1
+  fs.protected_symlinks: 1
+
+# --- Updates -----------------------------------------------------------------
+security_hardening_unattended_upgrades: true

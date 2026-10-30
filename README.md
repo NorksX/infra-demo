@@ -28,11 +28,33 @@ ENV=staging vagrant up          # (во PowerShell: $env:ENV="staging"; vagrant 
 | Патека | Опис |
 |---|---|
 | `inventories/<env>/hosts.yml` | Хостови, IP адреси и големина на VM (го чита и `Vagrantfile`) |
+| `inventories/<env>/group_vars/all/main.yml` | Поставки специфични за околината (домен, мрежа, VIP, верзии) |
 | `inventories/<env>/group_vars/all/vault.yml` | Шифрирани тајни (Ansible Vault), посебни за секоја околина |
-| `group_vars/all/defaults.yml` | Заеднички стандардни вредности (верзии, порти) |
+| `inventories/shared/group_vars/` | Заеднички поставки за двете околини (порти, firewall правила по слој) |
 | `roles/` | Сопствени улоги; Galaxy улогите се инсталираат во `roles/galaxy/` |
 | `playbooks/` | Playbook-и по слоеви, `site.yml` ги повикува по ред |
 | `scripts/generate-vault.sh` | Генерира vault лозинка и шифриран vault со случајни тајни |
+
+### Хиерархија на променливи
+
+`deploy.sh` ги вчитува двата инвентари по овој редослед, така што околината
+ги презапишува заедничките вредности:
+
+```
+-i inventories/shared/hosts.yml -i inventories/<env>/hosts.yml
+```
+
+1. `roles/<role>/defaults/` — стандардни вредности на улогата
+2. `inventories/shared/group_vars/` — исто за production и staging
+3. `inventories/<env>/group_vars/` — специфично за околината (+ vault)
+4. `inventories/<env>/host_vars/` — специфично за хост
+
+## Сопствени улоги
+
+| Улога | Што прави |
+|---|---|
+| `common` | hostname, `/etc/hosts` од инвентарот, chrony, timezone, основни пакети, `deploy` корисник |
+| `security-hardening` | UFW (правила по слој од `firewall_rules`), SSH зацврстување (`sshd -t` валидација), fail2ban, sysctl, автоматски безбедносни ажурирања |
 
 ## Ansible Vault
 

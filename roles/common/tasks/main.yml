@@ -1,0 +1,60 @@
+---
+- name: Set the hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Render /etc/hosts from the inventory
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Set the timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+  notify: Restart chrony
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    lock_timeout: 300
+
+- name: Configure chrony
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart chrony
+
+- name: Ensure chrony is running
+  ansible.builtin.systemd_service:
+    name: chrony
+    state: started
+    enabled: true
+
+- name: Manage the deploy user
+  ansible.builtin.user:
+    name: "{{ common_deploy_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+
+- name: Authorize only the project key for the deploy user
+  ansible.posix.authorized_key:
+    user: "{{ common_deploy_user }}"
+    key: "{{ common_deploy_pubkey }}"
+    exclusive: true
+
+- name: Allow the deploy user passwordless sudo
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/90-deploy
+    content: "{{ common_deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s

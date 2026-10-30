@@ -1,0 +1,8 @@
+---
+- name: Base configuration and hardening
+  hosts: all
+  roles:
+    - role: common
+      tags: [common]
+    - role: security-hardening
+      tags: [hardening]

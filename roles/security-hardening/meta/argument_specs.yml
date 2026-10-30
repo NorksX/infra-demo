@@ -1,0 +1,69 @@
+---
+argument_specs:
+  main:
+    short_description: Host hardening — firewall, SSH, fail2ban, kernel, updates
+    options:
+      security_hardening_packages:
+        type: list
+        elements: str
+      security_hardening_ssh_port:
+        type: int
+      security_hardening_ssh_allow_users:
+        type: list
+        elements: str
+        description: Only these accounts may log in over SSH.
+      security_hardening_ssh_permit_root_login:
+        type: str
+        choices: ["no", "prohibit-password", "yes"]
+      security_hardening_ssh_password_authentication:
+        type: bool
+      security_hardening_ssh_max_auth_tries:
+        type: int
+      security_hardening_ssh_login_grace_time:
+        type: int
+      security_hardening_ssh_client_alive_interval:
+        type: int
+      security_hardening_ssh_client_alive_count_max:
+        type: int
+      security_hardening_ssh_kex:
+        type: list
+        elements: str
+      security_hardening_ssh_ciphers:
+        type: list
+        elements: str
+      security_hardening_ssh_macs:
+        type: list
+        elements: str
+      security_hardening_firewall_enabled:
+        type: bool
+      security_hardening_firewall_ssh_from:
+        type: str
+        description: Source allowed to reach SSH (CIDR, IP or any).
+      security_hardening_firewall_rules:
+        type: list
+        elements: dict
+        description: Allow rules — {port, proto, from | from_hosts, comment}.
+      security_hardening_firewall_logging:
+        type: str
+        choices: ["off", low, medium, high, full]
+      security_hardening_fail2ban_enabled:
+        type: bool
+      security_hardening_fail2ban_bantime:
+        type: str
+      security_hardening_fail2ban_findtime:
+        type: str
+      security_hardening_fail2ban_maxretry:
+        type: int
+      security_hardening_fail2ban_banaction:
+        type: str
+      security_hardening_fail2ban_ignoreip:
+        type: list
+        elements: str
+      security_hardening_fail2ban_jails:
+        type: list
+        elements: dict
+        description: Extra jails — {name, logpath, failregex, port, maxretry, findtime, bantime}.
+      security_hardening_sysctl:
+        type: dict
+      security_hardening_unattended_upgrades:
+        type: bool

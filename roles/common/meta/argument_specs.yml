@@ -1,0 +1,26 @@
+---
+argument_specs:
+  main:
+    short_description: Base OS setup for every platform host
+    options:
+      common_timezone:
+        type: str
+        description: tz database name, e.g. Europe/Skopje.
+      common_packages:
+        type: list
+        elements: str
+        description: Packages installed on every host.
+      common_ntp_servers:
+        type: list
+        elements: str
+        description: NTP pools for chrony.
+      common_deploy_user:
+        type: str
+        description: Account Ansible connects as; gets the project key and sudo.
+      common_deploy_pubkey:
+        type: str
+        description: Public key authorized (exclusively) for the deploy user.
+      common_hosts_extra:
+        type: list
+        elements: dict
+        description: Extra /etc/hosts entries, each {ip, names}.

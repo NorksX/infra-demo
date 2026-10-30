@@ -1,0 +1,5 @@
+// {{ ansible_managed }}
+// Security updates only (origins are set by the distro's 50unattended-upgrades).
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";

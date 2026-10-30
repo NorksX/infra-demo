@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+127.0.0.1 localhost
+::1       localhost ip6-localhost ip6-loopback
+ff02::1   ip6-allnodes
+ff02::2   ip6-allrouters
+
+# Platform hosts ({{ env_name }})
+{% for host in groups['all'] | sort %}
+{{ '%-15s' | format(hostvars[host].ansible_host) }} {{ host }}.{{ domain }} {{ host }}
+{% endfor %}
+
+{% for entry in common_hosts_extra %}
+{{ '%-15s' | format(entry.ip) }} {{ entry.names | join(' ') }}
+{% endfor %}

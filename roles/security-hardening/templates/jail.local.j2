@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+[DEFAULT]
+bantime  = {{ security_hardening_fail2ban_bantime }}
+findtime = {{ security_hardening_fail2ban_findtime }}
+maxretry = {{ security_hardening_fail2ban_maxretry }}
+banaction = {{ security_hardening_fail2ban_banaction }}
+ignoreip = {{ security_hardening_fail2ban_ignoreip | join(' ') }}
+
+[sshd]
+enabled = true
+port    = {{ security_hardening_ssh_port }}
+backend = systemd
+
+{% for jail in security_hardening_fail2ban_jails %}
+[{{ jail.name }}]
+enabled  = true
+filter   = {{ jail.name }}
+port     = {{ jail.port | default('http,https') }}
+logpath  = {{ jail.logpath }}
+backend  = auto
+{% for key in ['maxretry', 'findtime', 'bantime'] if jail[key] is defined %}
+{{ '%-8s' | format(key) }} = {{ jail[key] }}
+{% endfor %}
+
+{% endfor %}
