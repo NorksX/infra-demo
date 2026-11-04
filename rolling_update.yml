@@ -2,9 +2,8 @@
 # Zero-downtime update of the web tier, one node at a time, e.g. a new
 # WordPress/WooCommerce version tested in staging:
 #
-#   1. set wordpress_version / woocommerce_version in inventories/<env>/group_vars/all/main.yml
-#   2. ansible-playbook playbooks/rolling_update.yml \
-#        -i inventories/shared/hosts.yml -i inventories/<env>/hosts.yml --vault-id <env>@.vault_pass_<env>
+#   1. set wordpress_version / woocommerce_version in inventory/<env>/group_vars/all/main.yml
+#   2. ansible-playbook rolling_update.yml -i inventory/<env>/hosts.yml --vault-id <env>@.vault_pass_<env>
 #
 # For each node: check that others are serving, drain it on every load
 # balancer, update it, and put it back only when HAProxy sees it healthy. A

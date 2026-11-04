@@ -9,5 +9,5 @@ galaxy_info:
     - name: Ubuntu
       versions: [noble]
 # PHP and Nginx are installed by geerlingguy.php / geerlingguy.nginx in
-# playbooks/webservers.yml; this role only configures them for WordPress.
+# webservers.yml; this role only configures them for WordPress.
 dependencies: []

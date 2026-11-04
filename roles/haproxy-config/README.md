@@ -13,7 +13,7 @@ HAProxy for the whole platform, generated from the inventory: adding a host to
 | `redis` | 6379 | `tcp-check`: AUTH → PING → `info replication`, expects `role:master` |
 | `stats` | 8404 | stats page, credentials from the vault |
 
-Admin socket: `/run/haproxy/admin.sock` (used by `playbooks/rolling_update.yml` to drain servers).
+Admin socket: `/run/haproxy/admin.sock` (used by `rolling_update.yml` to drain servers).
 
 ## Also
 

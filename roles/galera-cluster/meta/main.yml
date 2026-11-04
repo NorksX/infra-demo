@@ -8,5 +8,5 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions: [noble]
-# MariaDB itself is installed by geerlingguy.mysql (see playbooks/database.yml).
+# MariaDB itself is installed by geerlingguy.mysql (see database.yml).
 dependencies: []

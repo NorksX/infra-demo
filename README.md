@@ -60,14 +60,14 @@ Staging има ист код и иста структура, само помал
 | Барање | Каде |
 |---|---|
 | Целосна автоматизација со една команда | `.\deploy.ps1 -Environment production` → `vagrant up` + `deploy.sh` → `site.yml` |
-| `roles/`, `inventory/`, `group_vars/`, `host_vars/` | `roles/`, `inventories/{production,staging,shared}/{group_vars,host_vars}` |
+| `roles/`, `inventory/`, `group_vars/`, `host_vars/` | `roles/`, `inventory/{production,staging}/{hosts.yml,group_vars,host_vars}`, `group_vars/` (заеднички) |
 | Galaxy улоги | `geerlingguy.mysql`, `geerlingguy.php`, `geerlingguy.nginx`, `geerlingguy.redis` (`requirements.yml`, фиксни верзии) |
 | ≥ 3 сопствени улоги | **`wordpress-setup`, `haproxy-config`, `galera-cluster`, `security-hardening`**, плус `common`, `nfs-server`, `nfs-client` |
-| Ansible Vault | `inventories/<env>/group_vars/all/vault.yml`, посебна лозинка и тајни по околина, `no_log` |
+| Ansible Vault | `inventory/<env>/group_vars/all/vault.yml`, посебна лозинка и тајни по околина, `no_log` |
 | Идемпотентност | второ извршување на `site.yml` → `changed=0` на сите хостови (тестирано) |
 | Handlers | reload haproxy/nginx/php-fpm (со config test), rolling restart Galera, exportfs, fail2ban, ssh, sysctl … |
 | Jinja2 темплејти | `haproxy.cfg`, `keepalived.conf`, `wp-config.php`, `60-galera.cnf`, Nginx vhost, PHP-FPM pool, `sshd`, `jail.local`, `exports`, `/etc/hosts` … |
-| production и staging | `inventories/production`, `inventories/staging` |
+| production и staging | `inventory/production`, `inventory/staging` |
 | serial, delegate_to, rolling updates | `webservers.yml` (`serial: 50%`), `rolling_update.yml` (`serial: 1` + drain на LB), `galera-cluster` (`delegate_to` при bootstrap/restart) |
 | README + архитектурен дијаграм | овој документ, [docs/architecture.md](docs/architecture.md), README во секоја улога |
 
@@ -100,7 +100,7 @@ Staging има ист код и иста структура, само помал
 .\deploy.ps1 -Environment staging      # или production
 ```
 
-Ова: креира VM-и од `inventories/<env>/hosts.yml` → генерира SSH клуч, vault лозинка и шифриран vault
+Ова: креира VM-и од `inventory/<env>/hosts.yml` → генерира SSH клуч, vault лозинка и шифриран vault
 (ако ги нема) → инсталира Galaxy улоги/колекции → извршува `site.yml` → **end-to-end тест** со вистинска нарачка.
 
 Чекор по чекор (на пр. само Ansible делот):
@@ -137,23 +137,23 @@ ENV=staging vagrant up        # PowerShell: $env:ENV="staging"; vagrant up
 Лозинките се во vault-от:
 
 ```bash
-ansible-vault view inventories/production/group_vars/all/vault.yml --vault-id production@.vault_pass_production
+ansible-vault view inventory/production/group_vars/all/vault.yml --vault-id production@.vault_pass_production
 ```
 
 ## Структура на проектот
 
 ```
 ├── deploy.ps1 / deploy.sh        # една команда (Windows / контролен нод)
-├── Vagrantfile                   # VM-и од inventories/$ENV/hosts.yml
+├── Vagrantfile                   # VM-и од inventory/$ENV/hosts.yml
 ├── ansible.cfg, requirements.yml
-├── site.yml                      # целиот deployment, по слоеви
-├── playbooks/
-│   ├── bootstrap.yml  common.yml  database.yml  storage.yml  cache.yml
-│   ├── loadbalancers.yml  webservers.yml  verify.yml
-│   ├── rolling_update.yml        # zero-downtime ажурирање на web слојот
-│   └── galera_rolling_restart.yml
-├── inventories/
-│   ├── shared/group_vars/        # исто за двете околини (firewall правила, Galaxy поставки по слој)
+├── site.yml                      # целиот deployment, по слоеви (import_playbook)
+├── bootstrap.yml  common.yml  database.yml  storage.yml  cache.yml
+├── loadbalancers.yml  webservers.yml  verify.yml
+├── rolling_update.yml            # zero-downtime ажурирање на web слојот
+├── galera_rolling_restart.yml
+├── tasks/haproxy_backend_status.yml
+├── group_vars/                   # исто за двете околини: all/main.yml + по слој (galera, wordpress …)
+├── inventory/
 │   ├── production/
 │   │   ├── hosts.yml
 │   │   ├── group_vars/all/{main.yml, vault.yml, vault.example.yml}
@@ -172,19 +172,19 @@ ansible-vault view inventories/production/group_vars/all/vault.yml --vault-id pr
 
 ### Хиерархија на променливи
 
-`deploy.sh` ги вчитува двата инвентари по овој редослед, така што околината ги презапишува заедничките вредности:
-
-```
--i inventories/shared/hosts.yml -i inventories/<env>/hosts.yml
-```
+Околината се избира само со инвентарот: `ansible-playbook -i inventory/staging/hosts.yml site.yml`.
+Од најслаб кон најсилен (редоследот на Ansible за предност на променливите):
 
 1. `roles/<role>/defaults/` — стандардни вредности на улогата
-2. `inventories/shared/group_vars/` — исто за production и staging (на пр. firewall правила по слој)
-3. `inventories/<env>/group_vars/` — специфично за околината (домен, мрежа, VIP, верзии) + vault
-4. `inventories/<env>/host_vars/` — специфично за хост (keepalived приоритет, Redis реплика)
+2. `inventory/<env>/group_vars/all/` — специфично за околината (домен, мрежа, VIP, верзии) + vault
+3. `group_vars/` до playbook-ите (playbook group_vars) — исто за production и staging
+   (на пр. firewall правила и Galaxy поставки по слој)
+4. `inventory/<env>/host_vars/` — специфично за хост (keepalived приоритет, Redis реплика)
 
-> Зошто не `group_vars/` до `site.yml`? Ansible ги чита playbook `group_vars` релативно на секој
-> playbook (`playbooks/`), а `group_vars/all` таму би имал предност пред околината.
+Playbook `group_vars` имаат предност пред inventory `group_vars`, па секоја променлива е дефинирана
+**само на едно место**: или е иста насекаде (`group_vars/`), или зависи од околината (`inventory/<env>/`).
+Затоа playbook-ите се во коренот на проектот, до `group_vars/`, а `ansible.cfg` има `playbook_dir = .`
+за и ad-hoc командите да ги читаат.
 
 ## Ansible Vault
 
@@ -198,9 +198,9 @@ ansible-vault view inventories/production/group_vars/all/vault.yml --vault-id pr
 - Задачите што ракуваат со тајни имаат `no_log: true`; датотеките со тајни се `0640`/`0600`.
 
 ```bash
-ansible-vault view  inventories/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
-ansible-vault edit  inventories/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
-ansible-vault rekey inventories/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging \
+ansible-vault view  inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
+ansible-vault edit  inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
+ansible-vault rekey inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging \
   --new-vault-id staging@prompt
 ```
 
@@ -231,7 +231,7 @@ ansible-vault rekey inventories/staging/group_vars/all/vault.yml --vault-id stag
 ### База на податоци (MariaDB Galera)
 
 `geerlingguy.mysql` го инсталира MariaDB и ги креира базата и корисникот; `galera-cluster` ги поврзува
-трите нода во multi-master кластер. `playbooks/database.yml` е безбеден во секоја состојба:
+трите нода во multi-master кластер. `database.yml` е безбеден во секоја состојба:
 
 | Состојба | Што прави playbook-от |
 |---|---|
@@ -298,13 +298,11 @@ HAProxy праќа запишувања само на `db1` (другите се
 приклучување и рестартирање на Galera нодови, drain/enable на секој load balancer.
 
 ```bash
-# Нова верзија: inventories/production/group_vars/all/main.yml → wordpress_version / woocommerce_version, па:
-ansible-playbook playbooks/rolling_update.yml \
-  -i inventories/shared/hosts.yml -i inventories/production/hosts.yml --vault-id production@.vault_pass_production
+# Нова верзија: inventory/production/group_vars/all/main.yml → wordpress_version / woocommerce_version, па:
+ansible-playbook rolling_update.yml -i inventory/production/hosts.yml --vault-id production@.vault_pass_production
 
 # Rolling restart на Galera (на пр. по ажурирање на пакети)
-ansible-playbook playbooks/galera_rolling_restart.yml \
-  -i inventories/shared/hosts.yml -i inventories/production/hosts.yml --vault-id production@.vault_pass_production
+ansible-playbook galera_rolling_restart.yml -i inventory/production/hosts.yml --vault-id production@.vault_pass_production
 ```
 
 ## Тестирање
@@ -362,4 +360,4 @@ object cache and PHP sessions; and NFS for shared uploads. It finishes with an e
 real order. Custom roles: `wordpress-setup`, `haproxy-config`, `galera-cluster`, `security-hardening`
 (plus `common`, `nfs-server`, `nfs-client`); Galaxy roles: `geerlingguy.mysql/php/nginx/redis`.
 Secrets are in per-environment Ansible Vaults. Re-runs are idempotent (`changed=0`), and
-`playbooks/rolling_update.yml` upgrades the web tier one node at a time with zero downtime.
+`rolling_update.yml` upgrades the web tier one node at a time with zero downtime.

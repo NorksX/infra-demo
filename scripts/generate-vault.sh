@@ -9,7 +9,7 @@ ENV_NAME="${1:?usage: $0 production|staging}"
 cd "$(dirname "$0")/.."
 
 PASS_FILE=".vault_pass_${ENV_NAME}"
-VAULT_FILE="inventories/${ENV_NAME}/group_vars/all/vault.yml"
+VAULT_FILE="inventory/${ENV_NAME}/group_vars/all/vault.yml"
 
 # A committed vault without its password file (e.g. a fresh clone): a new
 # password could never decrypt it, so stop instead of creating one.

@@ -3,25 +3,25 @@
 # Run through deploy.sh, which selects the inventory and vault.
 
 - name: Bootstrap
-  ansible.builtin.import_playbook: playbooks/bootstrap.yml
+  ansible.builtin.import_playbook: bootstrap.yml
 
 - name: Base OS and hardening
-  ansible.builtin.import_playbook: playbooks/common.yml
+  ansible.builtin.import_playbook: common.yml
 
 - name: Database tier
-  ansible.builtin.import_playbook: playbooks/database.yml
+  ansible.builtin.import_playbook: database.yml
 
 - name: Storage tier
-  ansible.builtin.import_playbook: playbooks/storage.yml
+  ansible.builtin.import_playbook: storage.yml
 
 - name: Cache tier
-  ansible.builtin.import_playbook: playbooks/cache.yml
+  ansible.builtin.import_playbook: cache.yml
 
 - name: Load balancer tier
-  ansible.builtin.import_playbook: playbooks/loadbalancers.yml
+  ansible.builtin.import_playbook: loadbalancers.yml
 
 - name: Web tier
-  ansible.builtin.import_playbook: playbooks/webservers.yml
+  ansible.builtin.import_playbook: webservers.yml
 
 - name: End-to-end verification
-  ansible.builtin.import_playbook: playbooks/verify.yml
+  ansible.builtin.import_playbook: verify.yml

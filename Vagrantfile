@@ -1,7 +1,7 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 #
-# Creates the VMs for one environment by reading inventories/<env>/hosts.yml.
+# Creates the VMs for one environment by reading inventory/<env>/hosts.yml.
 # This is the ONLY thing Vagrant does: clean Ubuntu 24.04 VMs with static IPs
 # and a `deploy` user that accepts the project's SSH key (what cloud-init would
 # do on a real cloud). Everything else is done by Ansible.
@@ -20,7 +20,7 @@ environment    = ENV['ENV'] || 'production'
 # bigger host. The inventory sizes fit a 16 GB laptop.
 memory_scale   = (ENV['VM_MEMORY_SCALE'] || '1').to_f
 root           = File.dirname(__FILE__)
-inventory_file = File.join(root, 'inventories', environment, 'hosts.yml')
+inventory_file = File.join(root, 'inventory', environment, 'hosts.yml')
 raise "Inventory not found: #{inventory_file} (ENV=production|staging)" unless File.exist?(inventory_file)
 
 # Generate the deploy key pair once; it is gitignored.

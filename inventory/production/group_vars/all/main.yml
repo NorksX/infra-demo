@@ -1,22 +1,23 @@
 ---
-# Settings for every host in the STAGING environment.
-# (Values common to both environments are in inventories/shared/group_vars.)
+# Settings for every host in the PRODUCTION environment.
+# (Values common to both environments are in group_vars/ next to site.yml.)
 # Secrets live in the encrypted vault.yml next to this file and are surfaced
 # here as plain names (<thing>: "{{ vault_<thing> }}"), so every variable is
 # discoverable without decrypting the vault.
 
-env_name: staging
-domain: staging.shop.local
+env_name: production
+domain: shop.local
 site_url: "https://{{ domain }}"
 
 # --- Network -----------------------------------------------------------------
-private_subnet: 192.168.57.0/24
-# Single load balancer in staging: the "VIP" is simply haproxy1's address.
-lb_vip: 192.168.57.11
-keepalived_enabled: false
+private_subnet: 192.168.56.0/24
+# Floating IP owned by keepalived; clients and WordPress reach services through it.
+lb_vip: 192.168.56.10
+keepalived_enabled: true
 
 # --- Application versions ----------------------------------------------------
-# Staging runs the next release first; production follows via rolling_update.yml.
+# Production stays one release behind staging; upgrades are tested in staging
+# first and rolled out with rolling_update.yml.
 wordpress_version: "7.1.4"
 woocommerce_version: "11.2.1"
 

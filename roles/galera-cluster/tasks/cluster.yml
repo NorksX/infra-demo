@@ -3,7 +3,7 @@
 #   - healthy cluster        -> only stopped nodes are started
 #   - no Primary component   -> bootstrap from the node with the newest data
 #   - fresh install          -> bootstrap from galera_cluster_bootstrap_node
-# Also used before geerlingguy.mysql (playbooks/database.yml) so that a fully
+# Also used before geerlingguy.mysql (database.yml) so that a fully
 # stopped cluster is recovered before that role tries to start MariaDB.
 
 # Look for wsrep_on = ON, not just the file: the mariadb-server package ships

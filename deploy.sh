@@ -12,7 +12,7 @@ ENV_NAME="${1:-production}"
 shift || true
 cd "$(dirname "$0")"
 
-if [[ ! -d "inventories/${ENV_NAME}" ]]; then
+if [[ ! -d "inventory/${ENV_NAME}" ]]; then
   echo "Unknown environment '${ENV_NAME}' (expected production or staging)" >&2
   exit 1
 fi
@@ -26,9 +26,7 @@ bash scripts/generate-vault.sh "$ENV_NAME"
 ansible-galaxy role install -r requirements.yml -p roles/galaxy
 ansible-galaxy collection install -r requirements.yml -p collections
 
-# shared/ first so the environment's own group_vars override it.
 exec ansible-playbook site.yml \
-  -i inventories/shared/hosts.yml \
-  -i "inventories/${ENV_NAME}/hosts.yml" \
+  -i "inventory/${ENV_NAME}/hosts.yml" \
   --vault-id "${ENV_NAME}@.vault_pass_${ENV_NAME}" \
   "$@"

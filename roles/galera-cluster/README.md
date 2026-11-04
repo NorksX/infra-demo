@@ -31,7 +31,7 @@ finished by the next run.
 
 | Entry point | Use |
 |---|---|
-| `main` | full configuration (playbooks/database.yml) |
+| `main` | full configuration (database.yml) |
 | `cluster` | converge only; runs before geerlingguy.mysql so a stopped cluster can't hang it |
 | `rolling_restart` | restart all (or `galera_cluster_restart_hosts`) nodes one by one |
 | `verify` | assert every node is Primary, Synced and sees the whole cluster |

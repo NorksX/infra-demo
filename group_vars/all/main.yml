@@ -1,6 +1,8 @@
 ---
-# Defaults shared by every host in every environment.
-# Environment-specific values live in inventories/<env>/group_vars/all/main.yml.
+# Same for every host in every environment (playbook group_vars, next to site.yml).
+# Environment-specific values live in inventory/<env>/group_vars/all/main.yml.
+# Playbook group_vars take precedence over inventory group_vars, so a variable
+# belongs either here or in the inventory, never in both.
 
 timezone: Europe/Skopje
 store_currency: EUR
