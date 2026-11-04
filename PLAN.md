@@ -2,30 +2,31 @@
 
 ## ▶ CURRENT STATUS (keep this section up to date — read first when resuming)
 
-**Last updated:** 2026-11-04 — a power cut killed the first production run during `common`
-(VMs powered off mid-run); resumed with the same `deploy.ps1` (log: scratchpad `prod-deploy2.log`).
-Note: with 12 VMs the first apt refresh/installs are slow (~9 + 6 min, network-bound). Steam/Brave
-auto-start after a reboot and eat ~3.5 GB — they must be closed before a production run on 16 GB.
+**Last updated:** 2026-11-04 ~04:30
 
-All tiers are implemented and committed; everything below "Done" was tested on **staging**.
+All tiers are implemented and committed. Tested on staging, and now on **production** (12 VMs).
 
 **Done (committed):** skeleton/inventories/vault · common + security-hardening · database
 (geerlingguy.mysql + galera-cluster) · NFS + Redis · haproxy-config (+keepalived) · web tier
 (geerlingguy.php/nginx + wordpress-setup) · orchestration (serial, rolling_update.yml, verify.yml) ·
-docs (README in Macedonian, docs/architecture.md, role READMEs) · VM_MEMORY_SCALE.
+docs (README in Macedonian, docs/architecture.md, role READMEs) · VM_MEMORY_SCALE ·
+production deploy (after a power cut + 4 bug fixes) → `site.yml` re-run `changed=0` on 12 hosts ·
+production failover tests (results below).
+
+**Production failover results (traffic through the VIP):** web node power-off 16/16 OK (sticky
+client moved) · DB writer stopped 34/34 OK · Redis primary stopped 13/13 OK (runs uncached) ·
+VIP failover (HAProxy stopped on the VIP holder) 1 failed of 55, ~1 s gap · NFS wp1→wp3 OK.
 
 **Remaining, in order:**
-1. ⏳ Fresh **production** deploy with `.\deploy.ps1 -Environment production` (started 03:5x,
-   log: scratchpad `prod-deploy.log`). Production-only code, never run before: keepalived VIP,
-   Redis replica (cache2), haproxy2. Fix bugs → commit each fix separately.
-2. Production failover tests (VIP failover, wp2 down + sticky redispatch, db1 down, Redis primary
-   down, NFS wp1→wp3). Re-run `site.yml` → must be `changed=0`.
-3. Real upgrade in production: set production `wordpress_version: 7.1.4`,
-   `woocommerce_version: 11.2.1`, run `playbooks/rolling_update.yml` under traffic, commit
-   ("Promote WordPress 7.1.4 / WooCommerce 11.2.1 to production").
-4. `vagrant destroy -f` production, then fresh `.\deploy.ps1 -Environment staging` (one command
-   from zero; staging was only built incrementally so far).
-5. Fill `<!--RESULT-FRESH-->` / `<!--RESULT-PROD-->` placeholders in README.md with real results; commit.
+1. ⏳ Production upgrade 7.0.8/11.1.2 → 7.1.4/11.2.1 with `rolling_update.yml` under traffic
+   (inventory already changed, not committed yet). First try: wp1 OK, wp2 failed — wordpress.org
+   download at ~38 KB/s timed out; safety worked (503/503 requests OK, wp3/wp4 untouched).
+   → reworked wordpress-setup: releases downloaded once on the control node (checksum), copied over
+   the LAN, rsync'ed (synchronize), verified with `wp core/plugin verify-checksums`. Not committed
+   yet — commit when the rerun passes ("Download releases once and distribute them over the LAN"),
+   then commit the inventory change ("Promote WordPress 7.1.4 / WooCommerce 11.2.1 to production").
+2. `vagrant destroy -f` production, then fresh `.\deploy.ps1 -Environment staging`.
+3. Fill `<!--RESULT-FRESH-->` / `<!--RESULT-PROD-->` placeholders in README.md; commit.
 
 **How to run things (control node = WSL):** `wsl -e bash -c "cd /mnt/c/Users/Boro/Desktop/infra && ./deploy.sh staging"`.
 Use script files for anything with quotes (PowerShell mangles them). Only one environment fits in RAM.
@@ -35,7 +36,10 @@ SSH to a VM: `ssh -i files/deploy_key deploy@<ip>`. Vault passwords: `.vault_pas
 Vagrant net-ssh needs ecdh-sha2-nistp256 KEX · rsyslog AppArmor blocks HAProxy chroot socket → UDP 127.0.0.1:514 ·
 fail2ban log file must be owned by syslog · Jinja `'\t'` isn't a tab · ansible-core 2.19+ needs boolean
 conditionals · community.mysql → ansible.mysql · MK addresses need `state` in WooCommerce ·
-haproxy module `wait` doesn't wait for health checks → explicit poll.
+haproxy module `wait` doesn't wait for health checks → explicit poll · deploy.ps1 must not use
+ErrorActionPreference=Stop (stderr warnings kill runs) · package ships its own 60-galera.cnf → detect
+Galera by `wsrep_on = ON` · Vagrant machine names must include the env · redis-cache 3.0 needs
+WP_REDIS_GRACEFUL · power cut can corrupt VMDKs → destroy and redeploy.
 
 ---
 
