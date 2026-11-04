@@ -6,13 +6,19 @@
 # Also used before geerlingguy.mysql (playbooks/database.yml) so that a fully
 # stopped cluster is recovered before that role tries to start MariaDB.
 
-- name: Check whether Galera is configured
-  ansible.builtin.stat:
-    path: "{{ galera_cluster_config_file }}"
-  register: galera_cluster_config_stat
+# Look for wsrep_on = ON, not just the file: the mariadb-server package ships
+# its own 60-galera.cnf with everything commented out. A run interrupted after
+# installing MariaDB but before this role wrote its config would otherwise
+# "bootstrap" plain, non-Galera servers.
+- name: Check whether Galera is enabled in the config
+  ansible.builtin.command: grep -qE '^\s*wsrep_on\s*=\s*(ON|1)\s*$' {{ galera_cluster_config_file }}
+  register: galera_cluster_config_check
+  changed_when: false
+  # rc 1 = not enabled, rc 2 = file missing (MariaDB not installed yet)
+  failed_when: false
 
 - name: Converge the cluster
-  when: galera_cluster_config_stat.stat.exists
+  when: galera_cluster_config_check.rc == 0
   block:
     - name: Read node status
       ansible.builtin.include_tasks: status.yml

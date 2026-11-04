@@ -1,8 +1,14 @@
 ---
+# On a fresh install the package is still starting nfs-server, and systemd
+# can cancel a restart queued against that start job: retry.
 - name: Restart nfs-server
   ansible.builtin.systemd_service:
     name: nfs-server
     state: restarted
+  register: nfs_server_restart
+  until: nfs_server_restart is succeeded
+  retries: 3
+  delay: 5
 
 - name: Reload exports
   ansible.builtin.command: exportfs -ra
