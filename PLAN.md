@@ -17,16 +17,14 @@ production failover tests (results below).
 client moved) · DB writer stopped 34/34 OK · Redis primary stopped 13/13 OK (runs uncached) ·
 VIP failover (HAProxy stopped on the VIP holder) 1 failed of 55, ~1 s gap · NFS wp1→wp3 OK.
 
+Production upgrade 7.0.8/11.1.2 → 7.1.4/11.2.1 done with `rolling_update.yml` (257/257 OK) and
+committed; final production `site.yml` run `changed=0` on all 12 hosts; results are in README.md.
+Production VMs destroyed afterwards (by agreement) to free RAM.
+
 **Remaining, in order:**
-1. ⏳ Production upgrade 7.0.8/11.1.2 → 7.1.4/11.2.1 with `rolling_update.yml` under traffic
-   (inventory already changed, not committed yet). First try: wp1 OK, wp2 failed — wordpress.org
-   download at ~38 KB/s timed out; safety worked (503/503 requests OK, wp3/wp4 untouched).
-   → reworked wordpress-setup: releases downloaded once on the control node (checksum), copied over
-   the LAN, rsync'ed (synchronize), verified with `wp core/plugin verify-checksums`. Not committed
-   yet — commit when the rerun passes ("Download releases once and distribute them over the LAN"),
-   then commit the inventory change ("Promote WordPress 7.1.4 / WooCommerce 11.2.1 to production").
-2. `vagrant destroy -f` production, then fresh `.\deploy.ps1 -Environment staging`.
-3. Fill `<!--RESULT-FRESH-->` / `<!--RESULT-PROD-->` placeholders in README.md; commit.
+1. ⏳ Fresh `.\deploy.ps1 -Environment staging` from zero (download cache `files/cache` cleared too),
+   log: scratchpad `staging-fresh.log`. Then a second run → `changed=0`.
+2. Fill the `<!--RESULT-FRESH-->` placeholder in README.md (test #1) with the result; commit.
 
 **How to run things (control node = WSL):** `wsl -e bash -c "cd /mnt/c/Users/Boro/Desktop/infra && ./deploy.sh staging"`.
 Use script files for anything with quotes (PowerShell mangles them). Only one environment fits in RAM.
