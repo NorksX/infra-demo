@@ -2,7 +2,7 @@
 # Settings for every host in the PRODUCTION environment.
 # (Values common to both environments are in group_vars/ next to site.yml.)
 # Secrets live in the encrypted vault.yml next to this file and are surfaced
-# here as plain names (<thing>: "{{ vault_<thing> }}"), so every variable is
+# here as plain names (<thing>: "{{ <thing>_vault }}"), so every variable is
 # discoverable without decrypting the vault.
 
 env_name: production
@@ -22,11 +22,11 @@ wordpress_version: "7.1.4"
 woocommerce_version: "11.2.1"
 
 # --- Secrets (from vault.yml) ------------------------------------------------
-mysql_root_password: "{{ vault_mysql_root_password }}"
-wp_db_password: "{{ vault_wp_db_password }}"
-galera_sst_password: "{{ vault_galera_sst_password }}"
-redis_password: "{{ vault_redis_password }}"
-wp_admin_password: "{{ vault_wp_admin_password }}"
-wp_salts: "{{ vault_wp_salts }}"
-haproxy_stats_password: "{{ vault_haproxy_stats_password }}"
-keepalived_auth_password: "{{ vault_keepalived_auth_password }}"
+mysql_root_password: "{{ mysql_root_password_vault }}"
+wp_db_password: "{{ wp_db_password_vault }}"
+galera_sst_password: "{{ galera_sst_password_vault }}"
+redis_password: "{{ redis_password_vault }}"
+wp_admin_password: "{{ wp_admin_password_vault }}"
+wp_salts: "{{ wp_salts_vault }}"
+haproxy_stats_password: "{{ haproxy_stats_password_vault }}"
+keepalived_auth_password: "{{ keepalived_auth_password_vault }}"

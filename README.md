@@ -63,7 +63,7 @@ Staging има ист код и иста структура, само помал
 | `roles/`, `inventory/`, `group_vars/`, `host_vars/` | `roles/`, `inventory/{production,staging}/{hosts.yml,group_vars,host_vars}`, `group_vars/` (заеднички) |
 | Galaxy улоги | `geerlingguy.mysql`, `geerlingguy.php`, `geerlingguy.nginx`, `geerlingguy.redis` (`requirements.yml`, фиксни верзии) |
 | ≥ 3 сопствени улоги | **`wordpress-setup`, `haproxy-config`, `galera-cluster`, `security-hardening`**, плус `common`, `nfs-server`, `nfs-client` |
-| Ansible Vault | `inventory/<env>/group_vars/all/vault.yml`, посебна лозинка и тајни по околина, `no_log` |
+| Ansible Vault | `inventory/<env>/group_vars/all/vault.yml` (посебни тајни по околина), `.vault_pass` во `ansible.cfg`, `no_log` |
 | Идемпотентност | второ извршување на `site.yml` → `changed=0` на сите хостови (тестирано) |
 | Handlers | reload haproxy/nginx/php-fpm (со config test), rolling restart Galera, exportfs, fail2ban, ssh, sysctl … |
 | Jinja2 темплејти | `haproxy.cfg`, `keepalived.conf`, `wp-config.php`, `60-galera.cnf`, Nginx vhost, PHP-FPM pool, `sshd`, `jail.local`, `exports`, `/etc/hosts` … |
@@ -113,9 +113,9 @@ ENV=staging vagrant up        # PowerShell: $env:ENV="staging"; vagrant up
 
 ### Друг компјутер
 
-- Ископирајте ги `.vault_pass_production` и `.vault_pass_staging` (не се во git). Без нив шифрираниот
-  vault не може да се отвори, а `deploy.sh` застанува со јасна порака. Алтернатива: избришете ги
-  `vault.yml` датотеките и ќе се генерираат нови тајни.
+- Ископирајте ја `.vault_pass` (не е во git). Без неа шифрираните vault-ови не можат да се отворат,
+  а `deploy.sh` застанува со јасна порака. Алтернатива: избришете ги двата `vault.yml` и ќе се
+  генерираат нова лозинка и нови тајни.
 - Поголеми VM-и на посилен домаќин (на пр. 24 GB RAM): `$env:VM_MEMORY_SCALE = "1.5"; .\deploy.ps1`
   — ги множи сите `vb_memory` од инвентарот (VM-ите што веќе постојат треба `vagrant reload`).
 
@@ -137,7 +137,7 @@ ENV=staging vagrant up        # PowerShell: $env:ENV="staging"; vagrant up
 Лозинките се во vault-от:
 
 ```bash
-ansible-vault view inventory/production/group_vars/all/vault.yml --vault-id production@.vault_pass_production
+ansible-vault view inventory/production/group_vars/all/vault.yml
 ```
 
 ## Структура на проектот
@@ -188,20 +188,23 @@ Playbook `group_vars` имаат предност пред inventory `group_vars
 
 ## Ansible Vault
 
-- Секоја околина има **своја лозинка** (`.vault_pass_production`, `.vault_pass_staging` — во `.gitignore`)
-  и **свои тајни** во шифриран `vault.yml` (vault ID `production` / `staging`).
+- Лозинката е во скриената датотека **`.vault_pass`** (во `.gitignore`), зададена во `ansible.cfg`
+  (`vault_password_file = .vault_pass`), па playbook-ите се извршуваат без прашање за лозинка.
+- Секоја околина има **свои тајни** во шифриран `inventory/<env>/group_vars/all/vault.yml`
+  (различни случајни вредности за production и staging).
 - Шифрираниот `vault.yml` **се commit-ира** (вообичаена пракса) — без лозинката е бескорисен.
-- `scripts/generate-vault.sh <env>` ја создава лозинката и vault-от со случајни вредности ако не постојат.
-- Шема (лажни вредности): `vault.example.yml`. Конвенција: `vault_x` во vault → `x: "{{ vault_x }}"` во `main.yml`,
+- `scripts/generate-vault.sh <env>` ги создава лозинката и vault-от со случајни вредности ако не постојат.
+- Шема (лажни вредности): `vault.example.yml`. Конвенција: `x_vault` во vault → `x: "{{ x_vault }}"` во `main.yml`,
   па сите имиња на променливи се видливи без дешифрирање.
 - Тајните: MariaDB root, WordPress DB, Galera SST, Redis, WordPress admin, 8 WordPress salts, HAProxy stats, VRRP.
 - Задачите што ракуваат со тајни имаат `no_log: true`; датотеките со тајни се `0640`/`0600`.
 
 ```bash
-ansible-vault view  inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
-ansible-vault edit  inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging
-ansible-vault rekey inventory/staging/group_vars/all/vault.yml --vault-id staging@.vault_pass_staging \
-  --new-vault-id staging@prompt
+ansible-vault view  inventory/staging/group_vars/all/vault.yml
+ansible-vault edit  inventory/staging/group_vars/all/vault.yml
+# нова лозинка: rekey на двата vault-а, па замена на датотеката
+ansible-vault rekey inventory/*/group_vars/all/vault.yml --new-vault-password-file .vault_pass.new \
+  && mv .vault_pass.new .vault_pass
 ```
 
 ## Улоги
@@ -299,10 +302,10 @@ HAProxy праќа запишувања само на `db1` (другите се
 
 ```bash
 # Нова верзија: inventory/production/group_vars/all/main.yml → wordpress_version / woocommerce_version, па:
-ansible-playbook rolling_update.yml -i inventory/production/hosts.yml --vault-id production@.vault_pass_production
+ansible-playbook rolling_update.yml -i inventory/production/hosts.yml
 
 # Rolling restart на Galera (на пр. по ажурирање на пакети)
-ansible-playbook galera_rolling_restart.yml -i inventory/production/hosts.yml --vault-id production@.vault_pass_production
+ansible-playbook galera_rolling_restart.yml -i inventory/production/hosts.yml
 ```
 
 ## Тестирање

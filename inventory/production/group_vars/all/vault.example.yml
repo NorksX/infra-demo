@@ -6,20 +6,23 @@
 #
 # and can be viewed/edited with:
 #
-#   ansible-vault view vault.yml --vault-id production@.vault_pass_production
-#   ansible-vault edit vault.yml --vault-id production@.vault_pass_production
+#   ansible-vault view inventory/production/group_vars/all/vault.yml
+#   ansible-vault edit inventory/production/group_vars/all/vault.yml
 #
-# Each environment has its OWN vault password and DIFFERENT secrets.
+# from the project root (the password comes from .vault_pass, set as
+# vault_password_file in ansible.cfg).
+#
+# Each environment has DIFFERENT secrets (its own vault.yml).
 
-vault_mysql_root_password: "CHANGE_ME"
-vault_wp_db_password: "CHANGE_ME"
-vault_galera_sst_password: "CHANGE_ME"
-vault_redis_password: "CHANGE_ME"
-vault_wp_admin_password: "CHANGE_ME"
-vault_haproxy_stats_password: "CHANGE_ME"
-vault_keepalived_auth_password: "CHANGE_ME"   # VRRP uses max 8 characters
+mysql_root_password_vault: "CHANGE_ME"
+wp_db_password_vault: "CHANGE_ME"
+galera_sst_password_vault: "CHANGE_ME"
+redis_password_vault: "CHANGE_ME"
+wp_admin_password_vault: "CHANGE_ME"
+haproxy_stats_password_vault: "CHANGE_ME"
+keepalived_auth_password_vault: "CHANGE_ME"   # VRRP uses max 8 characters
 
-vault_wp_salts:
+wp_salts_vault:
   AUTH_KEY: "CHANGE_ME"
   SECURE_AUTH_KEY: "CHANGE_ME"
   LOGGED_IN_KEY: "CHANGE_ME"

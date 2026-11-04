@@ -28,5 +28,4 @@ ansible-galaxy collection install -r requirements.yml -p collections
 
 exec ansible-playbook site.yml \
   -i "inventory/${ENV_NAME}/hosts.yml" \
-  --vault-id "${ENV_NAME}@.vault_pass_${ENV_NAME}" \
   "$@"
