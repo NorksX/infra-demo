@@ -12,9 +12,40 @@
   changed_when: false
   failed_when: false
 
+# Like core: downloaded once on the control node, copied over the LAN.
+- name: Download plugin releases on the control node
+  ansible.builtin.get_url:
+    url: "https://downloads.wordpress.org/plugin/{{ item.item.name }}.{{ item.item.version }}.zip"
+    dest: "{{ wordpress_setup_download_cache }}/{{ item.item.name }}.{{ item.item.version }}.zip"
+    mode: "0644"
+    timeout: 60
+  loop: "{{ wordpress_setup_plugin_versions.results }}"
+  loop_control:
+    label: "{{ item.item.name }} {{ item.item.version }}"
+  when: item.rc != 0 or item.stdout != item.item.version
+  register: wordpress_setup_plugin_download
+  until: wordpress_setup_plugin_download is succeeded
+  retries: 3
+  delay: 10
+  delegate_to: localhost
+  become: false
+  throttle: 1
+
+- name: Copy plugin releases to the node
+  ansible.builtin.copy:
+    src: "{{ wordpress_setup_download_cache }}/{{ item.item.name }}.{{ item.item.version }}.zip"
+    dest: "{{ wordpress_setup_node_cache }}/"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ wordpress_setup_plugin_versions.results }}"
+  loop_control:
+    label: "{{ item.item.name }} {{ item.item.version }}"
+  when: item.rc != 0 or item.stdout != item.item.version
+
 - name: Install or update plugin files
   ansible.builtin.command: >-
-    wp plugin install {{ item.item.name }} --version={{ item.item.version }} --force
+    wp plugin install {{ wordpress_setup_node_cache }}/{{ item.item.name }}.{{ item.item.version }}.zip --force
     --allow-root --skip-plugins --skip-themes --path={{ wordpress_setup_docroot }}
   loop: "{{ wordpress_setup_plugin_versions.results }}"
   loop_control:
@@ -22,6 +53,18 @@
   when: item.rc != 0 or item.stdout != item.item.version
   changed_when: true
   notify: Reload php-fpm
+
+# The plugin zips have no published checksum, but every file is checked
+# against wordpress.org's per-file checksums once installed.
+- name: Verify plugin files against the official checksums
+  ansible.builtin.command: >-
+    wp plugin verify-checksums {{ item.item.name }} --version={{ item.item.version }}
+    --allow-root --skip-plugins --skip-themes --path={{ wordpress_setup_docroot }}
+  loop: "{{ wordpress_setup_plugin_versions.results }}"
+  loop_control:
+    label: "{{ item.item.name }} {{ item.item.version }}"
+  when: item.rc != 0 or item.stdout != item.item.version
+  changed_when: false
 
 - name: Remove unused bundled plugins
   ansible.builtin.file:

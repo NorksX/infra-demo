@@ -3,6 +3,9 @@
 .vault_pass*
 *.vault_pass
 
+# WordPress/plugin release archives downloaded by wordpress-setup.
+files/cache/
+
 # The deploy private key stays local; only deploy_key.pub is referenced.
 files/deploy_key
 files/deploy_key.pub

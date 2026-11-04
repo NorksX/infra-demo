@@ -7,6 +7,9 @@ wordpress_setup_wp_cli_version: "2.12.0"
 wordpress_setup_wp_cli_url: >-
   https://github.com/wp-cli/wp-cli/releases/download/v{{ wordpress_setup_wp_cli_version
   }}/wp-cli-{{ wordpress_setup_wp_cli_version }}.phar
+# Releases are downloaded once to the control node, then copied to each node.
+wordpress_setup_download_cache: "{{ ansible_config_file | dirname }}/files/cache"
+wordpress_setup_node_cache: /var/cache/wordpress-setup
 wordpress_setup_plugins:
   - name: woocommerce
     version: "{{ woocommerce_version }}"

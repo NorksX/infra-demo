@@ -1,6 +1,34 @@
 ---
 # Code belongs to root and is read-only for PHP (www-data); only the NFS
 # uploads directory is writable by the web server.
+#
+# Releases are downloaded ONCE, on the control node (checksum verified), and
+# copied to the web nodes over the private network: no node depends on
+# wordpress.org during a deploy or rolling update, and slow links don't
+# multiply by the number of nodes.
+- name: Tools for unpacking and syncing releases
+  ansible.builtin.apt:
+    name: [rsync, unzip]
+    state: present
+    lock_timeout: 300
+
+- name: Download cache on the control node
+  ansible.builtin.file:
+    path: "{{ wordpress_setup_download_cache }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Release cache on the node
+  ansible.builtin.file:
+    path: "{{ wordpress_setup_node_cache }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Document root
   ansible.builtin.file:
     path: "{{ wordpress_setup_docroot }}"
@@ -15,18 +43,75 @@
   changed_when: false
   failed_when: false
 
-# Fresh node: full download. Version change: replace core files only and keep
-# wp-content (themes, plugins, uploads mount).
-- name: Download WordPress {{ wordpress_setup_version }}
-  ansible.builtin.command: >-
-    wp core download --allow-root
-    --path={{ wordpress_setup_docroot }}
-    --version={{ wordpress_setup_version }}
-    --locale={{ wordpress_setup_locale }}
-    {{ '--skip-content --force' if wordpress_setup_core_version.rc == 0 else '' }}
+- name: Install WordPress {{ wordpress_setup_version }}
   when: wordpress_setup_core_version.rc != 0 or wordpress_setup_core_version.stdout != wordpress_setup_version
-  changed_when: true
-  notify: Reload php-fpm
+  block:
+    - name: Download the release on the control node (SHA-1 from wordpress.org)
+      ansible.builtin.get_url:
+        url: "https://wordpress.org/wordpress-{{ wordpress_setup_version }}.zip"
+        checksum: "sha1:https://wordpress.org/wordpress-{{ wordpress_setup_version }}.zip.sha1"
+        dest: "{{ wordpress_setup_download_cache }}/wordpress-{{ wordpress_setup_version }}.zip"
+        mode: "0644"
+        timeout: 60
+      register: wordpress_setup_core_download
+      until: wordpress_setup_core_download is succeeded
+      retries: 3
+      delay: 10
+      delegate_to: localhost
+      become: false
+      # One host at a time: the first downloads, the others find the
+      # verified file already in the cache.
+      throttle: 1
+
+    - name: Copy the release to the node
+      ansible.builtin.copy:
+        src: "{{ wordpress_setup_download_cache }}/wordpress-{{ wordpress_setup_version }}.zip"
+        dest: "{{ wordpress_setup_node_cache }}/"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Directory for the unpacked release
+      ansible.builtin.file:
+        path: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Unpack the release
+      ansible.builtin.unarchive:
+        src: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}.zip"
+        dest: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}"
+        remote_src: true
+        creates: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}/wordpress/wp-includes/version.php"
+
+    # Fresh node: everything, including the default wp-content. Upgrade: core
+    # only, and --delete removes files the new release dropped; wp-content
+    # (plugins, themes, uploads mount) and our own files stay untouched.
+    - name: Sync core files into the document root
+      ansible.posix.synchronize:
+        src: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}/wordpress/"
+        dest: "{{ wordpress_setup_docroot }}/"
+        archive: true
+        delete: "{{ wordpress_setup_core_version.rc == 0 }}"
+        rsync_opts: >-
+          {{ ['--exclude=/wp-content/', '--exclude=/wp-config.php', '--exclude=/healthz.php']
+             if wordpress_setup_core_version.rc == 0 else [] }}
+      # Both paths are on the web node itself.
+      delegate_to: "{{ inventory_hostname }}"
+      notify: Reload php-fpm
+
+    - name: Verify core files against the official checksums
+      ansible.builtin.command: >-
+        wp core verify-checksums --allow-root --path={{ wordpress_setup_docroot }}
+        --version={{ wordpress_setup_version }} --exclude=healthz.php
+      changed_when: false
+
+    - name: Remove the unpacked copy
+      ansible.builtin.file:
+        path: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}"
+        state: absent
 
 - name: Keep wp-content owned by root, readable by PHP
   ansible.builtin.file:

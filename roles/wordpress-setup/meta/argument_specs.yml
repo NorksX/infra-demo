@@ -15,6 +15,12 @@ argument_specs:
         type: str
       wordpress_setup_wp_cli_url:
         type: str
+      wordpress_setup_download_cache:
+        type: path
+        description: Directory on the control node where releases are downloaded once.
+      wordpress_setup_node_cache:
+        type: path
+        description: Directory on each node that receives the release archives.
       wordpress_setup_plugins:
         type: list
         elements: dict
