@@ -322,7 +322,23 @@ ansible-playbook playbooks/galera_rolling_restart.yml \
 | 7 | NFS: датотека запишана на wp1 → видлива на wp2 | ✔ (`root_squash` го одбива root) |
 | 8 | End-to-end нарачка преку HAProxy (Store API, наплата при испорака) | ✔ (`verify.yml`, на секое извршување) |
 | 9 | Firewall: Galera/Redis/web порти недостапни од надвор | ✔ |
-<!--RESULT-PROD-->
+
+**Production (12 VM), со сообраќај ~4–5 барања/s преку VIP за време на секој тест:**
+
+| # | Тест | Резултат |
+|---|---|---|
+| P1 | Deploy од нула со `deploy.ps1` (прекинат со нестанок на струја, па продолжен) | успешно; повторно извршување `changed=0` на сите 12 хоста + нарачка во `verify.yml` |
+| P2 | HAProxy запрен на нодот со VIP | VIP на другиот LB за ~1 s; **1 од 55** барања неуспешно (во моментот на падот) |
+| P3 | wp2 исклучен (клиент со `SERVERID=wp2`) | **16/16** OK; клиентот автоматски префрлен на друг нод |
+| P4 | MariaDB запрен на db1 (writer) | **34/34** OK; db2 презема, db1 се враќа со IST и е `Synced` |
+| P5 | Redis primary (cache1) запрен | **13/13** OK; сајтот работи без cache (`redis=degraded`), cache2 е реплика (`master_link_status:up`) |
+| P6 | NFS: датотека од wp1 → читање на wp3 | ✔ |
+| P7 | Вистинско ажурирање 7.0.8 / WC 11.1.2 → 7.1.4 / WC 11.2.1 (`rolling_update.yml`) | **257/257** одговори 200; секој нод drain-иран на двата LB; checksum проверка на core и plugin датотеки |
+
+Грешки откриени и поправени со овие тестови (види git историја): Redis Object Cache 3.0 бара
+`WP_REDIS_GRACEFUL` (без него пад на Redis → 500 на секоја страница), побавни health checks,
+VIP се враќаше назад (`nopreempt`), бавно преземање од wordpress.org (сега еднаш на контролниот нод),
+стар `alloptions` во Redis по ажурирање (flush на object cache), детекција на Galera по `wsrep_on`.
 
 ## Решавање проблеми
 
