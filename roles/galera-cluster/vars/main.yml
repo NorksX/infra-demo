@@ -1,0 +1,8 @@
+---
+# Paths fixed by Ubuntu's MariaDB and galera-4 packages. Not settings: role
+# vars take precedence over inventory variables, so they can't be overridden
+# by accident (tunables are in defaults/main.yml).
+galera_cluster_config_file: /etc/mysql/mariadb.conf.d/60-galera.cnf
+galera_cluster_provider: /usr/lib/galera/libgalera_smm.so
+galera_cluster_datadir: /var/lib/mysql
+galera_cluster_socket: /run/mysqld/mysqld.sock

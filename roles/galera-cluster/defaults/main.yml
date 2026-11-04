@@ -12,11 +12,6 @@ galera_cluster_packages:
   - socat
   - rsync
 
-galera_cluster_config_file: /etc/mysql/mariadb.conf.d/60-galera.cnf
-galera_cluster_provider: /usr/lib/galera/libgalera_smm.so
-galera_cluster_datadir: /var/lib/mysql
-galera_cluster_socket: /run/mysqld/mysqld.sock
-
 # State Snapshot Transfer: mariabackup keeps the donor writable during SST.
 galera_cluster_sst_method: mariabackup
 galera_cluster_sst_user: sst

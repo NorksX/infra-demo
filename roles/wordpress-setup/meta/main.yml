@@ -8,6 +8,11 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions: [noble]
-# PHP and Nginx are installed by geerlingguy.php / geerlingguy.nginx in
-# webservers.yml; this role only configures them for WordPress.
-dependencies: []
+# The role renders a PHP-FPM pool and an Nginx vhost and reloads both
+# services, so the Galaxy roles that install them run first, wherever this
+# role is used (webservers.yml and rolling_update.yml).
+dependencies:
+  - role: geerlingguy.php
+    tags: [php]
+  - role: geerlingguy.nginx
+    tags: [nginx]

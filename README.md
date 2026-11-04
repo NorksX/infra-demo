@@ -168,7 +168,11 @@ ansible-vault view inventory/production/group_vars/all/vault.yml
 ```
 
 Секоја сопствена улога има `defaults/`, `tasks/`, `handlers/`, `templates/`, `meta/main.yml`,
-**`meta/argument_specs.yml`** (типизирана валидација на параметрите) и `README.md`.
+**`meta/argument_specs.yml`** (типизирана валидација на параметрите) и `README.md` (структурата од
+`ansible-galaxy init`). `defaults/` се поставки што може да се менуваат; `vars/` (на пр. во
+`galera-cluster`) се константи — патеки од Ubuntu пакетите — со предност пред инвентарот.
+Зависности во `meta/main.yml`: `wordpress-setup` бара `geerlingguy.php` и `geerlingguy.nginx`
+(ги рендерира PHP-FPM pool-от и Nginx vhost-от), па тие се извршуваат пред неа секаде каде што се користи.
 
 ### Хиерархија на променливи
 
@@ -214,8 +218,8 @@ ansible-vault rekey inventory/*/group_vars/all/vault.yml --new-vault-password-fi
 | Улога | Користење |
 |---|---|
 | `geerlingguy.mysql` 6.5.0 | MariaDB (не MySQL) + база и корисник за WordPress; конфигурацијата оди во `mariadb.conf.d/50-server.cnf` |
-| `geerlingguy.php` 6.1.0 | PHP 8.3 + модули (mysql, redis, intl, gd, imagick …), `php.ini`, OPcache |
-| `geerlingguy.nginx` 3.3.1 | Nginx; vhost-от доаѓа од `wordpress-setup` |
+| `geerlingguy.php` 6.1.0 | PHP 8.3 + модули (mysql, redis, intl, gd, imagick …), `php.ini`, OPcache; зависност на `wordpress-setup` |
+| `geerlingguy.nginx` 3.3.1 | Nginx; vhost-от доаѓа од `wordpress-setup` (зависност во нејзиниот `meta/main.yml`) |
 | `geerlingguy.redis` 2.0.0 | Redis со лозинка; репликација од `host_vars` |
 
 ### Сопствени

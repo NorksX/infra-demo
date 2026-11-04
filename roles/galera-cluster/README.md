@@ -39,4 +39,5 @@ finished by the next run.
 ## Key variables
 
 See `defaults/main.yml` and `meta/argument_specs.yml`. Required:
-`galera_cluster_sst_password` (from the vault).
+`galera_cluster_sst_password` (from the vault). Package paths (config file,
+provider library, datadir, socket) are constants in `vars/main.yml`.

@@ -8,9 +8,6 @@
   serial: "{{ web_serial | default('50%') }}"
   max_fail_percentage: 0
   roles:
-    - role: geerlingguy.php
-      tags: [php]
-    - role: geerlingguy.nginx
-      tags: [nginx]
+    # Pulls in geerlingguy.php and geerlingguy.nginx (meta/main.yml dependencies).
     - role: wordpress-setup
       tags: [wordpress]

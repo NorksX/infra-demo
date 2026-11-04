@@ -17,14 +17,6 @@ argument_specs:
       galera_cluster_packages:
         type: list
         elements: str
-      galera_cluster_config_file:
-        type: path
-      galera_cluster_provider:
-        type: path
-      galera_cluster_datadir:
-        type: path
-      galera_cluster_socket:
-        type: path
       galera_cluster_sst_method:
         type: str
         choices: [mariabackup, rsync]
