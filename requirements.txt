@@ -1,0 +1,6 @@
+# Control node (Python virtualenv), fixed versions as tested:
+#   python3 -m venv /opt/ansible && /opt/ansible/bin/pip install -r requirements.txt
+# Galaxy roles and collections are pinned in requirements.yml.
+ansible-core==2.21.5
+ansible-lint==26.10.1
+yamllint==1.38.0

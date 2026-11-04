@@ -9,6 +9,7 @@
 
 - [Архитектура](#архитектура)
 - [Исполнување на барањата](#исполнување-на-барањата)
+- [Концепти од предавањата](#концепти-од-предавањата)
 - [Брз старт](#брз-старт)
 - [Структура на проектот](#структура-на-проектот)
 - [Ansible Vault](#ansible-vault)
@@ -71,6 +72,33 @@ Staging има ист код и иста структура, само помал
 | serial, delegate_to, rolling updates | `webservers.yml` (`serial: 50%`), `rolling_update.yml` (`serial: 1` + drain на LB), `galera-cluster` (`delegate_to` при bootstrap/restart) |
 | README + архитектурен дијаграм | овој документ, [docs/architecture.md](docs/architecture.md), README во секоја улога |
 
+## Концепти од предавањата
+
+Каде во проектот се користи секој концепт од предавањето „Ansible“ (L1):
+
+| Концепт | Во проектот |
+|---|---|
+| Инвентар: групи, `all`, променливи по хост | `inventory/<env>/hosts.yml` — групи по слој (`loadbalancers`, `wordpress`, `redis`, `galera`, `storage`), `ansible_host` по хост |
+| `group_vars/`, `group_vars/<група>/` со повеќе датотеки, `host_vars/` | `group_vars/all/main.yml` + по слој; `inventory/<env>/group_vars/all/{main,vault}.yml`; `inventory/<env>/host_vars/` |
+| Организација `inventory/prod`, `inventory/dev` + `-i` при извршување | `inventory/production`, `inventory/staging`: `ansible-playbook -i inventory/staging/hosts.yml site.yml` |
+| Предност на променливи | role `defaults` < inventory `group_vars/all` < playbook `group_vars` < `host_vars` < role `vars` ([хиерархија](#хиерархија-на-променливи)) |
+| Vault: `.vault_pass` во `ansible.cfg`, `vault.yml` во `group_vars/all`, суфикс `_vault` | [Ansible Vault](#ansible-vault) |
+| Фиксни верзии, virtualenv | `requirements.txt` (pip во `/opt/ansible`), `requirements.yml` (Galaxy улоги и колекции) |
+| Ad-hoc команди, `ansible-doc` | [Ad-hoc команди](#ad-hoc-команди) |
+| Идемпотентност, `changed`/`skipped` | второ извршување `changed=0`; `changed_when`/`creates` кај `command` задачите |
+| Loops, conditionals | `loop` (firewall правила, plugin-и, LB при drain), `when` (на пр. keepalived само во production) |
+| Linear / **serial** / **free** стратегија | default linear по слоеви; `serial: 50%` (`webservers.yml`), `serial: 1` (`rolling_update.yml`); `strategy: free` (`bootstrap.yml`, `common.yml`) |
+| `max_fail_percentage` | `webservers.yml`, `rolling_update.yml` (`0` — прв неуспех ја запира серијата) |
+| `delegate_to`: исклучи нод на LB → ажурирај → вклучи | `rolling_update.yml` — drain на секој LB (`delegate_to: "{{ item }}"` преку `groups['loadbalancers']`) |
+| `run_once` | инсталација на WordPress, plugin-и, поставки на продавницата, TLS сертификат |
+| Notify и handlers | сите сопствени улоги (reload со претходен config test, rolling restart на Galera) |
+| Улоги (`ansible-galaxy init` структура), Galaxy | 7 сопствени + 4 `geerlingguy.*` ([Улоги](#улоги)) |
+| `meta/main.yml` зависности | `wordpress-setup` → `geerlingguy.php`, `geerlingguy.nginx` |
+| Jinja2 темплејти, `{{ ansible_managed }}`, `{% for host in groups[...] %}` | сите `*.j2` (заглавие `ansible_managed`); `haproxy.cfg.j2` и `hosts.j2` ги генерираат backends / записи од групите |
+| Tags, `--limit` | `--tags haproxy`, `--tags nginx -l wp1` …; тагови на улогите во playbook-ите |
+| Fact caching | `ansible.cfg` (`fact_caching = jsonfile`), `bootstrap.yml` собира facts од сите хостови |
+| Infrastructure management (креирање на VM-и) | `Vagrantfile` ги креира VM-ите од **истиот** инвентар (`ansible_host`, `vb_memory`) |
+
 ## Брз старт
 
 ### Предуслови (Windows домаќин)
@@ -79,11 +107,11 @@ Staging има ист код и иста структура, само помал
 2. **WSL2 Ubuntu** како Ansible контролен нод:
 
    ```bash
-   # во WSL (како root: wsl -u root)
+   # во WSL (како root: wsl -u root), од директориумот на проектот
    apt-get install -y python3-venv sshpass
-   python3 -m venv /opt/ansible
-   /opt/ansible/bin/pip install ansible-core ansible-lint yamllint
-   ln -s /opt/ansible/bin/ansible* /usr/local/bin/
+   python3 -m venv /opt/ansible                          # virtualenv
+   /opt/ansible/bin/pip install -r requirements.txt      # фиксни верзии: ansible-core 2.21.5 …
+   ln -s /opt/ansible/bin/{ansible*,yamllint} /usr/local/bin/
    ```
 
 3. Вистински Linux дозволи на `/mnt/c` (во спротивно Ansible не го чита `ansible.cfg`,
@@ -109,6 +137,24 @@ Staging има ист код и иста структура, само помал
 ENV=staging vagrant up        # PowerShell: $env:ENV="staging"; vagrant up
 ./deploy.sh staging           # од WSL; дополнителни аргументи одат кон ansible-playbook
 ./deploy.sh staging --tags haproxy --limit loadbalancers
+
+# или директно (откако deploy.sh еднаш ги инсталирал Galaxy улогите):
+ansible-playbook -i inventory/staging/hosts.yml site.yml
+ansible-playbook -i inventory/staging/hosts.yml webservers.yml --tags nginx -l wp1
+```
+
+### Ad-hoc команди
+
+За брзи проверки без playbook (`ansible <шаблон> -m <модул> -a "<аргументи>"`):
+
+```bash
+ansible -i inventory/staging/hosts.yml all -m ping
+ansible -i inventory/staging/hosts.yml galera -a "mysql -e \"SHOW STATUS LIKE 'wsrep_cluster_size'\""
+ansible -i inventory/staging/hosts.yml wordpress -a "wp core version --path=/var/www/wordpress --allow-root"
+ansible -i inventory/staging/hosts.yml 'all:!galera' -a uptime -f 10
+ansible -i inventory/staging/hosts.yml redis -m ansible.builtin.debug -a var=redis_maxmemory
+ansible-inventory -i inventory/staging/hosts.yml --graph
+ansible-doc community.general.haproxy
 ```
 
 ### Друг компјутер
@@ -145,7 +191,7 @@ ansible-vault view inventory/production/group_vars/all/vault.yml
 ```
 ├── deploy.ps1 / deploy.sh        # една команда (Windows / контролен нод)
 ├── Vagrantfile                   # VM-и од inventory/$ENV/hosts.yml
-├── ansible.cfg, requirements.yml
+├── ansible.cfg, requirements.yml, requirements.txt   # Galaxy / pip, фиксни верзии
 ├── site.yml                      # целиот deployment, по слоеви (import_playbook)
 ├── bootstrap.yml  common.yml  database.yml  storage.yml  cache.yml
 ├── loadbalancers.yml  webservers.yml  verify.yml
@@ -284,8 +330,9 @@ HAProxy праќа запишувања само на `db1` (другите се
 
 - **Код** (`/var/www/wordpress`) е во сопственост на root, само за читање за PHP; единствено uploads (NFS)
   е запишлив. `DISALLOW_FILE_MODS` — кодот го менува само Ansible.
-- **Верзии** се фиксни: staging = WordPress 7.1.4 / WooCommerce 11.2.1, production е една верзија назад
-  (7.0.8 / 11.1.2) — новата верзија прво се тестира во staging, па оди во production со `rolling_update.yml`.
+- **Верзии** се фиксни по околина (`wordpress_version`, `woocommerce_version`): новата верзија прво се
+  тестира во staging, па оди во production со `rolling_update.yml` (така production е ажуриран од
+  7.0.8 / 11.1.2 на 7.1.4 / 11.2.1, тест P7). Сега двете околини се на 7.1.4 / 11.2.1.
 - **Еднократни операции** (инсталација, plugin-и, поставки) само на `wp1` (`run_once` + `delegate_to`).
 - **Тајни** само во `wp-config.php` и PHP-FPM pool-от (`0640`), никогаш во `php.ini`.
 - `/healthz`: 200 кога PHP-FPM и базата работат; Redis е само „degraded“ (WordPress работи и без cache).

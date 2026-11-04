@@ -2,7 +2,7 @@
 
 ## ▶ CURRENT STATUS (keep this section up to date — read first when resuming)
 
-**Last updated:** 2026-11-04 ~04:30
+**Last updated:** 2026-11-04 ~10:15
 
 All tiers are implemented and committed. Tested on staging, and now on **production** (12 VMs).
 
@@ -24,13 +24,21 @@ Production VMs destroyed afterwards (by agreement) to free RAM.
 Fresh `.\deploy.ps1 -Environment staging` from zero (empty download cache): passed first try in
 29 min (8 VMs + 19 min Ansible); second run `changed=0` on all 8 hosts. Results in README.md.
 
+**Aligned with the course slides (`L1. Ansible.pdf`), 2026-11-04 morning:** layout `inventory/<env>/` +
+playbooks at the root + shared vars in root `group_vars/` (playbook group_vars; the old
+`inventories/shared` layer is gone) · single `.vault_pass` via `vault_password_file`, `x_vault` suffix ·
+`wordpress-setup` meta dependencies on geerlingguy.php/nginx · galera `vars/` constants ·
+`strategy: free` for bootstrap/common · pinned `requirements.txt` + collections · README: ad-hoc
+commands and a slide-concept → project table. Each step tested on staging (changed=0; rolling
+update 469/469 OK). The plan below still shows the original paths (history).
+
 **Remaining:** nothing required. Staging VMs are left running for the user to look at.
 Optional ideas: Storefront theme, Redis Sentinel for automatic replica promotion.
-For the presentation laptop (24 GB): copy `.vault_pass_*`, `$env:VM_MEMORY_SCALE = "1.5"`.
+For the presentation laptop (24 GB): copy `.vault_pass`, `$env:VM_MEMORY_SCALE = "1.5"`.
 
 **How to run things (control node = WSL):** `wsl -e bash -c "cd /mnt/c/Users/Boro/Desktop/infra && ./deploy.sh staging"`.
 Use script files for anything with quotes (PowerShell mangles them). Only one environment fits in RAM.
-SSH to a VM: `ssh -i files/deploy_key deploy@<ip>`. Vault passwords: `.vault_pass_<env>` (gitignored).
+SSH to a VM: `ssh -i files/deploy_key deploy@<ip>`. Vault password: `.vault_pass` (gitignored, set in ansible.cfg).
 
 **Gotchas already solved (don't re-investigate):** world-writable /mnt/c → wsl.conf metadata ·
 Vagrant net-ssh needs ecdh-sha2-nistp256 KEX · rsyslog AppArmor blocks HAProxy chroot socket → UDP 127.0.0.1:514 ·
