@@ -10,6 +10,8 @@
 #   vagrant up                    # production (default)
 #   $env:ENV="staging"; vagrant up  (PowerShell)  /  ENV=staging vagrant up
 #   vagrant destroy -f
+#   vagrant ssh production-wp1      # machine names are <env>-<host>
+#   (ENV must match the machines you address: ENV=staging for staging-*)
 
 require 'yaml'
 
@@ -45,7 +47,10 @@ Vagrant.configure('2') do |config|
   config.vm.synced_folder '.', '/vagrant', disabled: true
 
   servers.each do |server|
-    config.vm.define server[:name] do |node|
+    # Vagrant keeps machine state in .vagrant/machines/<name>/, so the name
+    # carries the environment: otherwise staging and production would share
+    # (and overwrite) each other's records. The hostname stays e.g. "wp1".
+    config.vm.define "#{environment}-#{server[:name]}" do |node|
       node.vm.hostname = server[:name]
       node.vm.network 'private_network', ip: server[:ip]
 

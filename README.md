@@ -333,6 +333,7 @@ ansible-playbook playbooks/galera_rolling_restart.yml \
 | `vagrant up` чека SSH по рестарт | VM-ите се зацврстени; KEX алгоритмите за Vagrant (net-ssh) се дозволени во `security-hardening` |
 | Galera не стартува по рестарт на сите VM-и | `./deploy.sh <env> --limit galera` — опоравокот го избира најновиот нод |
 | Сајтот враќа 503 | `http://<lb>:8404/` — кои backends се DOWN; `curl http://<wp>/healthz` на нодот |
+| VM не стартува по нестанок на струја (`VERR_VD_VMDK_INVALID_HEADER`) | дискот е оштетен: `vagrant destroy -f` и повторно `.\deploy.ps1` — сè се креира одново |
 | Најава од прелистувачот е блокирана | fail2ban на LB: `sudo fail2ban-client set haproxy-wp-login unbanip <ip>` |
 
 ## English summary
