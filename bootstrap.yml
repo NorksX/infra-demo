@@ -1,6 +1,10 @@
 ---
+# strategy: free — every VM goes through these steps at its own pace (one
+# that boots slowly doesn't hold the others back); nothing here depends on
+# another host.
 - name: Bootstrap all hosts
   hosts: all
+  strategy: free
   gather_facts: false
   tasks:
     - name: Wait until the host accepts SSH

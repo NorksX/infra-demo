@@ -1,6 +1,9 @@
 ---
+# strategy: free — base packages and hardening are independent per host
+# (they only read other hosts' inventory addresses, never their facts).
 - name: Base configuration and hardening
   hosts: all
+  strategy: free
   roles:
     - role: common
       tags: [common]

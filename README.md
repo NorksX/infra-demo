@@ -296,6 +296,7 @@ HAProxy праќа запишувања само на `db1` (другите се
 | Playbook | Стратегија |
 |---|---|
 | `site.yml` | bootstrap → common/hardening → база → NFS → Redis → **HAProxy → web** → verify (LB е пред web бидејќи WordPress ги користи MariaDB и Redis преку HAProxy) |
+| `bootstrap.yml`, `common.yml` | `strategy: free` — секој хост ги извршува задачите со своја брзина (VM што подоцна се подигнал не ги задржува другите); нема зависности меѓу хостовите |
 | `webservers.yml` | `serial: 50%` + `max_fail_percentage: 0` — ако една половина падне, извршувањето застанува, другата продолжува да служи |
 | `rolling_update.yml` | `serial: 1`: проверка дека други нодови се UP → **drain на секој LB** (`delegate_to`) и чекање да завршат конекциите → ажурирање → враќање дури кога HAProxy health check-от го пријави нодот UP |
 | `galera_rolling_restart.yml` | рестарт на Galera нодовите еден по еден, со чекање на `Synced` |
