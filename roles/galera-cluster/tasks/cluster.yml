@@ -17,8 +17,14 @@
   # rc 1 = not enabled, rc 2 = file missing (MariaDB not installed yet)
   failed_when: false
 
+# All-or-nothing: the decisions below compare every node's status, so they
+# only make sense once every node has Galera enabled (main.yml renders the
+# config on all nodes first; a half-configured cluster waits for that).
 - name: Converge the cluster
-  when: galera_cluster_config_check.rc == 0
+  when: >-
+    ansible_play_hosts
+    | map('extract', hostvars, ['galera_cluster_config_check', 'rc'])
+    | reject('equalto', 0) | list | length == 0
   block:
     - name: Read node status
       ansible.builtin.include_tasks: status.yml
