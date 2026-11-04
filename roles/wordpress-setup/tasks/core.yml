@@ -113,11 +113,13 @@
         path: "{{ wordpress_setup_node_cache }}/wordpress-{{ wordpress_setup_version }}"
         state: absent
 
-- name: Keep wp-content owned by root, readable by PHP
+# Also after the sync: rsync copies the release directory's own attributes
+# (root:root) onto the document root.
+- name: Keep the document root and wp-content owned by root, readable by PHP
   ansible.builtin.file:
     path: "{{ wordpress_setup_docroot }}/{{ item }}"
     state: directory
     owner: root
     group: www-data
     mode: "0755"
-  loop: [wp-content, wp-content/plugins, wp-content/themes]
+  loop: ["", wp-content, wp-content/plugins, wp-content/themes]

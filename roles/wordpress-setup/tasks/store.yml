@@ -26,3 +26,13 @@
       ansible.builtin.command: wp wc update --path={{ wordpress_setup_docroot }}
       register: wordpress_setup_wc_update
       changed_when: "'No updates required' not in wordpress_setup_wc_update.stdout"
+
+    # After schema changes the Redis object cache can hold options from before
+    # them: a process that loaded `alloptions` during the upgrade writes its
+    # stale copy back. update_option() only refreshes the cache when the DB
+    # row changes, so e.g. woocommerce_db_version stayed at the old version
+    # and the same migrations were "found" on every run.
+    - name: Flush the object cache after database updates
+      ansible.builtin.command: wp cache flush --path={{ wordpress_setup_docroot }}
+      when: wordpress_setup_wc_update is changed or (wordpress_setup_update_db is defined and wordpress_setup_update_db is changed)
+      changed_when: true
