@@ -2,7 +2,10 @@
 
 ## ▶ CURRENT STATUS (keep this section up to date — read first when resuming)
 
-**Last updated:** 2026-10-30 04:10
+**Last updated:** 2026-11-04 — a power cut killed the first production run during `common`
+(VMs powered off mid-run); resumed with the same `deploy.ps1` (log: scratchpad `prod-deploy2.log`).
+Note: with 12 VMs the first apt refresh/installs are slow (~9 + 6 min, network-bound). Steam/Brave
+auto-start after a reboot and eat ~3.5 GB — they must be closed before a production run on 16 GB.
 
 All tiers are implemented and committed; everything below "Done" was tested on **staging**.
 
