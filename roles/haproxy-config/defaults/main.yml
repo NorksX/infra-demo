@@ -11,9 +11,10 @@ haproxy_config_web_group: wordpress
 haproxy_config_web_port: 80
 haproxy_config_health_path: /healthz
 haproxy_config_sticky_cookie: SERVERID
-haproxy_config_check_inter: 3s
-haproxy_config_check_fall: 3
+haproxy_config_check_inter: 2s
+haproxy_config_check_fall: 2
 haproxy_config_check_rise: 2
+haproxy_config_db_check_inter: 1s
 
 # --- MariaDB Galera (one writer, others as hot standby) ----------------------
 # Sending all writes to one node avoids Galera certification conflicts while

@@ -28,6 +28,9 @@ define( 'WP_REDIS_DATABASE',    {{ wordpress_setup_redis_cache_db }} );
 define( 'WP_REDIS_PREFIX',      'wp-{{ wordpress_setup_environment }}:' );
 define( 'WP_REDIS_TIMEOUT',      1 );
 define( 'WP_REDIS_READ_TIMEOUT', 1 );
+// Opt-in since redis-cache 3.0: without it any Redis error is a fatal page
+// error. With it, a Redis outage only means a slower, uncached site.
+define( 'WP_REDIS_GRACEFUL',    true );
 
 // ** Site URL and reverse proxy ** //
 define( 'WP_HOME',    '{{ wordpress_setup_site_url }}' );

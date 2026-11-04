@@ -28,6 +28,8 @@ argument_specs:
         type: int
       haproxy_config_check_rise:
         type: int
+      haproxy_config_db_check_inter:
+        type: str
       haproxy_config_db_group:
         type: str
       haproxy_config_db_port:

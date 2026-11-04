@@ -47,6 +47,10 @@ backend wordpress
     # Sticky sessions: the first response sets SERVERID=<node>; later requests
     # stick to that node. If it goes DOWN, redispatch picks a healthy one.
     cookie {{ haproxy_config_sticky_cookie }} insert indirect nocache httponly secure
+    # A request that hits a node as it dies is retried on another node. Never
+    # for POST: a replayed checkout could place an order twice.
+    retry-on all-retryable-errors
+    http-request disable-l7-retry if METH_POST
     option httpchk
     http-check send meth GET uri {{ haproxy_config_health_path }} ver HTTP/1.1 hdr Host {{ haproxy_config_domain }}
     http-check expect status 200
@@ -65,7 +69,9 @@ listen mariadb
     # galera-cluster's :{{ haproxy_config_db_check_port }} endpoint returns 200 only when the node is Synced.
     option httpchk
     http-check expect status 200
-    default-server port {{ haproxy_config_db_check_port }} inter {{ haproxy_config_check_inter }} fall {{ haproxy_config_check_fall }} rise {{ haproxy_config_check_rise }} on-marked-down shutdown-sessions
+    # Checked every second: until a dead writer is marked DOWN, new connections
+    # still go to it, so detection time is the failover time.
+    default-server port {{ haproxy_config_db_check_port }} inter {{ haproxy_config_db_check_inter }} fall 2 rise 3 on-marked-down shutdown-sessions
 {% for host in groups[haproxy_config_db_group] %}
     server {{ host }} {{ hostvars[host].ansible_host }}:{{ haproxy_config_db_port }} check{{ '' if host == haproxy_config_db_primary else ' backup' }}
 {% endfor %}
@@ -77,7 +83,9 @@ listen redis
     option tcplog
     timeout client 30m
     timeout server 30m
-    # Only the node that reports role:master receives clients.
+    # Only the node that reports role:master receives clients. With none, refuse
+    # at once so PHP falls back to "no cache" instead of waiting on a dead link.
+    tcp-request connection reject if { nbsrv(redis) eq 0 }
     option tcp-check
     tcp-check connect
     tcp-check send AUTH\ {{ haproxy_config_redis_password }}\r\n

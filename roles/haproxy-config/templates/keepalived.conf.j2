@@ -8,13 +8,17 @@ global_defs {
 # Give up the VIP when HAProxy on this node is not running.
 vrrp_script chk_haproxy {
     script "/usr/bin/systemctl is-active --quiet haproxy"
-    interval 2
-    fall 2
+    interval 1
+    fall 1
     rise 2
 }
 
 vrrp_instance VI_WEB {
-    state {{ 'MASTER' if haproxy_config_keepalived_priority | int == (groups[haproxy_config_lb_group] | map('extract', hostvars, 'keepalived_priority') | map('default', 100) | map('int') | max) else 'BACKUP' }}
+    # Both start as BACKUP with nopreempt: the highest priority wins the first
+    # election, but a recovered node does not take the VIP back — that second
+    # switch would interrupt clients once more for no benefit.
+    state BACKUP
+    nopreempt
     interface {{ haproxy_config_keepalived_interface }}
     virtual_router_id {{ haproxy_config_keepalived_router_id }}
     priority {{ haproxy_config_keepalived_priority }}
