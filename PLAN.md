@@ -21,10 +21,12 @@ Production upgrade 7.0.8/11.1.2 → 7.1.4/11.2.1 done with `rolling_update.yml` 
 committed; final production `site.yml` run `changed=0` on all 12 hosts; results are in README.md.
 Production VMs destroyed afterwards (by agreement) to free RAM.
 
-**Remaining, in order:**
-1. ⏳ Fresh `.\deploy.ps1 -Environment staging` from zero (download cache `files/cache` cleared too),
-   log: scratchpad `staging-fresh.log`. Then a second run → `changed=0`.
-2. Fill the `<!--RESULT-FRESH-->` placeholder in README.md (test #1) with the result; commit.
+Fresh `.\deploy.ps1 -Environment staging` from zero (empty download cache): passed first try in
+29 min (8 VMs + 19 min Ansible); second run `changed=0` on all 8 hosts. Results in README.md.
+
+**Remaining:** nothing required. Staging VMs are left running for the user to look at.
+Optional ideas: Storefront theme, Redis Sentinel for automatic replica promotion.
+For the presentation laptop (24 GB): copy `.vault_pass_*`, `$env:VM_MEMORY_SCALE = "1.5"`.
 
 **How to run things (control node = WSL):** `wsl -e bash -c "cd /mnt/c/Users/Boro/Desktop/infra && ./deploy.sh staging"`.
 Use script files for anything with quotes (PowerShell mangles them). Only one environment fits in RAM.
